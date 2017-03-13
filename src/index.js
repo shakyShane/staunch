@@ -5,8 +5,10 @@ var Subject         = require('rxjs/Subject').Subject;
 require('rxjs/add/operator/scan');
 require('rxjs/add/operator/do');
 require('rxjs/add/operator/share');
+require('rxjs/add/observable/of');
 require('rxjs/add/operator/map');
 require('rxjs/add/operator/filter');
+require('rxjs/add/operator/mergeMap');
 require('rxjs/add/operator/distinctUntilChanged');
 require('rxjs/add/operator/withLatestFrom');
 
@@ -14,7 +16,7 @@ var Immutable       = require('immutable');
 var fromJS          = Immutable.fromJS;
 var Map             = Immutable.Map;
 
-module.exports = function createStore(initialState, initialReducers, initialEffects) {
+module.exports = function createStore(initialState, initialReducers, initialEffects, initialMiddleware) {
 
     var mergedInitialState = alwaysMap(initialState);
 
@@ -24,8 +26,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     var action$ = new Subject();
 
     // reducers to act upon state
-    var storeReducers = [];
-    // var storeEffects  = [];
+    var storeReducers   = [];
 
     // stream
     var stateUpdate$ = action$
@@ -33,7 +34,6 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             if (!isPlainObject(action)) {
                 console.error('Please provide an object with at least a `type` property');
             }
-            // console.log('+', action.type);
         })
         .scan(function(accMap, action) {
 
@@ -60,10 +60,6 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         .subscribe(state$);
 
     var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
-
-    // add initial ones
-    _addReducers(initialReducers);
-    _addEffects(initialEffects);
 
     /**
      * Dispatch 1 or many actions
@@ -135,10 +131,17 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         });
     }
 
+    function _addMiddleware(middleware) {
+        [].concat(middleware).filter(Boolean).forEach(function (middleware) {
+            middleware.call(null, api);
+        })
+    }
+
     var api = {
         state$: state$,
         action$: action$,
         actionsWithState$: actionsWithState$,
+        actionsWithResultingStateUpdate$: actionsWithState$,
         register: function (input) {
             var state    = input.state;
             var reducers = input.reducers;
@@ -186,8 +189,17 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         toJSON: function (path) {
             var lookup = [].concat(path).filter(Boolean);
             return state$.getValue().getIn(lookup, Map({})).toJSON();
+        },
+        addMiddleware: function (middleware) {
+            _addMiddleware(middleware);
+            return api;
         }
     };
+
+    // add initial ones
+    _addReducers(initialReducers);
+    _addEffects(initialEffects);
+    _addMiddleware(initialMiddleware);
 
     return api;
 };
