@@ -1,4 +1,4 @@
-const createStore = require('../');
+const createStore = require('../src');
 const Immutable = require('immutable');
 require('rxjs/add/operator/skip');
 

@@ -96,6 +96,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                     fns: [].concat(r).filter(Boolean)
                 });
             }
+
             if (isPlainObject(r)) {
                 /**
                  * if path/fn pairs given
