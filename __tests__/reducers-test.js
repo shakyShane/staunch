@@ -1,7 +1,8 @@
 const createStore = require('../');
 const assert = require('assert');
 
-(function () {
+it('Action fires from an object only', function () {
+
     const store = createStore();
     const result = store.register({
         state: {
@@ -20,9 +21,10 @@ const assert = require('assert');
         .toJS();
 
     assert.equal(result.user.id, '01', 'Action fires from an object only');
-})();
+});
 
-(function () {
+it('Action fires from a string only', function () {
+
     const store = createStore();
     const result = store.register({
         state: {
@@ -36,15 +38,16 @@ const assert = require('assert');
             }
         ]
     })
-        .dispatch('anything')
+        .dispatch({type: 'anything'})
         .getState()
         .toJS();
 
     assert.equal(result.user.id, '01', 'Action fires from a string only');
-})();
+});
 
 
-(function () {
+it('Action fires from multiple', function () {
+
     const store = createStore();
     const result = store.register({
         state: {
@@ -71,58 +74,9 @@ const assert = require('assert');
 
     assert.equal(result.user.id, '01', 'Action fires from multiple (set id)');
     assert.equal(result.user.name, 'Shane', 'Action fires from multiple (set name)');
-})();
+});
 
-
-(function () {
-    const store = createStore({user: {name: 'shane'}});
-
-    const fn = function (state, action) {
-        switch (action.type) {
-            case 'USER_ID':
-                return state.setIn(['user', 'id'], action.payload);
-        }
-        return state;
-    };
-
-    const result = store.addReducers([fn])
-        .dispatch({type: 'USER_ID', payload: '01'})
-        .getState()
-        .toJS();
-
-    assert.equal(result.user.id, '01', 'Add global reducer function with access to everything');
-})();
-
-
-(function () {
-    const store = createStore({user: {name: 'shane'}});
-
-    const fn2 = function (user, action) {
-        switch (action.type) {
-            case 'USER_ID':
-                return user.set('id', action.payload);
-        }
-        return user;
-    };
-    const fn3 = function (user, action) {
-        switch (action.type) {
-            case 'USER_NAME':
-                return user.set('name', action.payload);
-        }
-        return user;
-    };
-
-    const result = store.addReducers([{path: ['user'], fns: [fn2, fn3]}])
-        .dispatch({type: 'USER_ID', payload: '01'})
-        .dispatch({type: 'USER_NAME', payload: 'Shane'})
-        .getState()
-        .toJS();
-
-    assert.equal(result.user.id, '01', 'Add reducer function tied to a path (id)');
-    assert.equal(result.user.name, 'Shane', 'Add reducer function tied to a path (name)');
-})();
-
-(function () {
+it('Add reducer function tied to a path (id)', function () {
 
     const fn2 = function (state, action) {
         switch (action.type) {
@@ -141,10 +95,9 @@ const assert = require('assert');
 
     const result = store.dispatch({type: 'USER_ID', payload: '01'}).getState().toJS();
     assert.equal(result.user.id, '01', 'Add reducer function tied to a path (id)');
-})();
+});
 
-
-(function () {
+it('Add reducer function tied to a path (id)', function () {
 
     const fn2 = function (state, action) {
         switch (action.type) {
@@ -163,5 +116,5 @@ const assert = require('assert');
 
     const result = store.dispatch({type: 'USER_ID', payload: '01'}).getState().toJS();
     assert.equal(result.user.id, '01', 'Add reducer function tied to a path (id)');
+});
 
-})();

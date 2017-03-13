@@ -7,6 +7,7 @@ require('rxjs/add/operator/do');
 require('rxjs/add/operator/share');
 require('rxjs/add/operator/map');
 require('rxjs/add/operator/filter');
+require('rxjs/add/operator/distinctUntilChanged');
 require('rxjs/add/operator/withLatestFrom');
 
 var Immutable       = require('immutable');
@@ -26,12 +27,15 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     var storeReducers = [];
     // var storeEffects  = [];
 
-    // add initial ones
-    _addReducers(initialReducers);
-    _addEffects(initialEffects);
-
     // stream
-    var stateUpdate$ = action$.scan(function(accMap, action) {
+    var stateUpdate$ = action$
+        .do(function (action) {
+            if (!isPlainObject(action)) {
+                console.error('Please provide an object with at least a `type` property');
+            }
+            // console.log('+', action.type);
+        })
+        .scan(function(accMap, action) {
 
         // is it a @@namespace ?
         var actionType = action.type || (typeof action === 'string' ? action : '');
@@ -55,6 +59,12 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     stateUpdate$
         .subscribe(state$);
 
+    var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
+
+    // add initial ones
+    _addReducers(initialReducers);
+    _addEffects(initialEffects);
+
     /**
      * Dispatch 1 or many actions
      * @param action
@@ -63,7 +73,9 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
      */
     function _dispatcher(action) {
         if (Array.isArray(action)) {
-            return action.forEach(function(a) { action$.next(a) });
+            return action.forEach(function(a) {
+                action$.next(a)
+            });
         }
         return action$.next(action);
     }
@@ -75,38 +87,52 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
      */
     function _addReducers (reducers) {
         [].concat(reducers).filter(Boolean).forEach(function (r) {
+            /**
+             *
+             */
             if (typeof r === 'function') {
                 storeReducers.push({
                     path: [],
                     fns: [].concat(r).filter(Boolean)
                 });
             }
-            if (r.path && r.fns) {
-                storeReducers.push({
-                    path: [].concat(r.path).filter(Boolean),
-                    fns: [].concat(r.fns).filter(Boolean)
-                });
+            if (isPlainObject(r)) {
+                /**
+                 * if path/fn pairs given
+                 */
+                if (r.path && r.fns) {
+                    storeReducers.push({
+                        path: [].concat(r.path).filter(Boolean),
+                        fns: [].concat(r.fns).filter(Boolean)
+                    });
+                } else {
+                    // redux style key: fn pairs
+                    for (var key in r) {
+                        storeReducers.push({
+                            path: [].concat(key).filter(Boolean),
+                            fns: [].concat(r[key]).filter(Boolean)
+                        });
+                    }
+                }
             }
         });
     }
 
     function _addEffects (effects) {
-        const out = Object.assign({}, actionsWithState$, {
+        const out = {
             ofType: function (actionName) {
                 return actionsWithState$.filter(function (incoming) {
                     return incoming.action.type === actionName;
                 });
             }
-        });
+        };
 
         [].concat(effects).filter(Boolean).forEach(function (effect) {
-            effect.call(null, out).forEach(function (action) {
+            effect.call(null, out, state$).forEach(function (action) {
                 _dispatcher(action);
             });
         });
     }
-
-    var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
 
     var api = {
         state$: state$,
@@ -152,8 +178,13 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             var lookup = [].concat(path).filter(Boolean);
             return state$.getValue().getIn(lookup, Map({}));
         },
-        toJS: function () {
-            return state$.getValue().toJS();
+        toJS: function (path) {
+            var lookup = [].concat(path).filter(Boolean);
+            return state$.getValue().getIn(lookup).toJS();
+        },
+        toJSON: function (path) {
+            var lookup = [].concat(path).filter(Boolean);
+            return state$.getValue().getIn(lookup, Map({})).toJSON();
         }
     };
 
@@ -161,3 +192,9 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
 };
 
 function alwaysMap (input) { return Map.isMap(input) ? input : fromJS(input || {}) };
+
+function isPlainObject(value) {
+    var objectTag = '[object Object]';
+
+    return Object.prototype.toString.call(value) === objectTag;
+}

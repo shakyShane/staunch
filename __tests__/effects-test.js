@@ -2,7 +2,7 @@ const createStore = require('../');
 const assert = require('assert');
 
 
-(function () {
+it('supports effects at register time', function () {
     const store = createStore();
     const result = store.register({
         state: {
@@ -36,5 +36,5 @@ const assert = require('assert');
         .toJS();
 
     // console.log(result);
-    assert.equal(result.user.id, '01', 'Action fires from an object only');
-})();
+    expect(result.user.id).toEqual('01');
+});
