@@ -1,8 +1,8 @@
-const createStore = require('./src');
-const assert      = require('assert');
+const createStore = require('../');
+const assert = require('assert');
 
 (function () {
-    const store  = createStore();
+    const store = createStore();
     const result = store.register({
         state: {
             user: {
@@ -23,7 +23,7 @@ const assert      = require('assert');
 })();
 
 (function () {
-    const store  = createStore();
+    const store = createStore();
     const result = store.register({
         state: {
             user: {
@@ -45,7 +45,7 @@ const assert      = require('assert');
 
 
 (function () {
-    const store  = createStore();
+    const store = createStore();
     const result = store.register({
         state: {
             user: {
@@ -55,8 +55,10 @@ const assert      = require('assert');
         reducers: [
             function (user, action) {
                 switch (action.type) {
-                    case 'USER_ID':   return user.set('id', action.payload);
-                    case 'USER_NAME': return user.set('name', action.payload)
+                    case 'USER_ID':
+                        return user.set('id', action.payload);
+                    case 'USER_NAME':
+                        return user.set('name', action.payload)
                 }
                 return user;
             }
@@ -73,11 +75,12 @@ const assert      = require('assert');
 
 
 (function () {
-    const store  = createStore({user: {name: 'shane'}});
+    const store = createStore({user: {name: 'shane'}});
 
     const fn = function (state, action) {
         switch (action.type) {
-            case 'USER_ID':   return state.setIn(['user', 'id'], action.payload);
+            case 'USER_ID':
+                return state.setIn(['user', 'id'], action.payload);
         }
         return state;
     };
@@ -92,7 +95,7 @@ const assert      = require('assert');
 
 
 (function () {
-    const store  = createStore({user: {name: 'shane'}});
+    const store = createStore({user: {name: 'shane'}});
 
     const fn2 = function (user, action) {
         switch (action.type) {
@@ -129,9 +132,9 @@ const assert      = require('assert');
         return state;
     };
 
-    const store  = createStore({user: {name: 'shane'}}, fn2);
+    const store = createStore({user: {name: 'shane'}}, fn2);
 
-    store.action$.subscribe(function(action) {
+    store.action$.subscribe(function (action) {
         assert.equal(action.type, 'USER_ID', 'action has type');
         assert.equal(action.payload, '01', 'action has payload');
     });
@@ -151,9 +154,9 @@ const assert      = require('assert');
         return state;
     };
 
-    const store  = createStore({user: {name: 'shane'}}, fn2);
+    const store = createStore({user: {name: 'shane'}}, fn2);
 
-    store.actionsWithState$.subscribe(function(incoming) {
+    store.actionsWithState$.subscribe(function (incoming) {
         assert.equal(incoming.action.type, 'USER_ID', 'action has type');
         assert.equal(incoming.action.payload, '01', 'action has payload');
     });

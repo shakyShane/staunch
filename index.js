@@ -1,16 +1,19 @@
 var Observable      = require('rxjs/Observable').Observable;
 var BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
 var Subject         = require('rxjs/Subject').Subject;
+
 require('rxjs/add/operator/scan');
 require('rxjs/add/operator/do');
 require('rxjs/add/operator/share');
+require('rxjs/add/operator/map');
+require('rxjs/add/operator/filter');
 require('rxjs/add/operator/withLatestFrom');
 
 var Immutable       = require('immutable');
 var fromJS          = Immutable.fromJS;
 var Map             = Immutable.Map;
 
-module.exports = function createStore(initialState, initialReducers) {
+module.exports = function createStore(initialState, initialReducers, initialEffects) {
 
     var mergedInitialState = alwaysMap(initialState);
 
@@ -21,9 +24,11 @@ module.exports = function createStore(initialState, initialReducers) {
 
     // reducers to act upon state
     var storeReducers = [];
+    // var storeEffects  = [];
 
     // add initial ones
     _addReducers(initialReducers);
+    _addEffects(initialEffects);
 
     // stream
     var stateUpdate$ = action$.scan(function(accMap, action) {
@@ -85,28 +90,54 @@ module.exports = function createStore(initialState, initialReducers) {
         });
     }
 
+    function _addEffects (effects) {
+        const out = Object.assign({}, actionsWithState$, {
+            ofType: function (actionName) {
+                return actionsWithState$.filter(function (incoming) {
+                    return incoming.action.type === actionName;
+                });
+            }
+        });
+
+        [].concat(effects).filter(Boolean).forEach(function (effect) {
+            effect.call(null, out).forEach(function (action) {
+                _dispatcher(action);
+            });
+        });
+    }
+
+    var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
+
     var api = {
         state$: state$,
         action$: action$,
-        actionsWithState$: action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} }),
+        actionsWithState$: actionsWithState$,
         register: function (input) {
             var state    = input.state;
             var reducers = input.reducers;
             var effects  = input.effects;
-            for (var key in state) {
-                storeReducers.push({
-                    path: [key],
-                    fns: [].concat(reducers).filter(Boolean)
-                });
-                // now init with action
-                _dispatcher({
-                    type: '@@NS-INIT('+ key +')',
-                    payload: {
+
+            if (reducers) {
+                for (var key in state) {
+                    storeReducers.push({
                         path: [key],
-                        value: state[key]
-                    }
-                });
+                        fns: [].concat(reducers).filter(Boolean)
+                    });
+                    // now init with action
+                    _dispatcher({
+                        type: '@@NS-INIT('+ key +')',
+                        payload: {
+                            path: [key],
+                            value: state[key]
+                        }
+                    });
+                }
             }
+
+            if (effects) {
+                _addEffects(effects);
+            }
+
             return api;
         },
         addReducers: function (reducers) {
