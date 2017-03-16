@@ -10,14 +10,24 @@ var Map             = Immutable.Map;
 module.exports = function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
 
     var mergedInitialState = alwaysMap(initialState);
+    var state$             = new BehaviorSubject(mergedInitialState);
 
-    var state$ = new BehaviorSubject(mergedInitialState);
+    var userExtra$ = new BehaviorSubject({});
+    var newExtras$   = new Subject();
+    newExtras$.scan(function (extras, incoming) {
+        return Object.assign({}, extras, incoming);
+    }, {}).share().subscribe(userExtra$);
 
     // stream of actions
     var action$ = new Subject();
 
     // reducers to act upon state
-    var storeReducers = [];
+    var storeReducers = new BehaviorSubject([]);
+    var newReducer$   = new Subject();
+    newReducer$.scan(function (acc, incoming) {
+        return acc.concat(incoming);
+    }, []).share().subscribe(storeReducers);
+
 
     // stream
     var stateUpdate$ = action$
@@ -26,17 +36,25 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                 console.error('Please provide an object with at least a `type` property');
             }
         })
-        .scan(function(accMap, action) {
+        .withLatestFrom(storeReducers, function (action, reducers) {
+            return {
+                action: action, reducers: reducers
+            }
+        })
+        .scan(function(accMap, incoming) {
 
-        // is it a @@namespace ?
+        var action = incoming.action;
+        var reducers = incoming.reducers;
+
         var actionType = action.type || (typeof action === 'string' ? action : '');
 
+        // is it a @@namespace ?
         if (actionType.indexOf('@@NS-INIT') === 0) {
 
             return accMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value))
 
         } else {
-            return storeReducers.reduce(function (outgoingValue, reducer) {
+            return reducers.reduce(function (outgoingValue, reducer) {
                 return outgoingValue.updateIn(reducer.path, function(currentValue) {
                     return reducer.fns.reduce(function (value, fn) {
                         return fn.call(null, value, action, outgoingValue);
@@ -84,7 +102,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
              *
              */
             if (typeof r === 'function') {
-                storeReducers.push({
+                newReducer$.onNext({
                     path: [],
                     fns: [].concat(r).filter(Boolean)
                 });
@@ -104,14 +122,14 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                  * if path/fn pairs given
                  */
                 if (r.path && r.fns) {
-                    storeReducers.push({
+                    newReducer$.onNext({
                         path: [].concat(r.path).filter(Boolean),
                         fns: [].concat(r.fns).filter(Boolean)
                     });
                 } else {
                     // redux style key: fn pairs
                     for (var key in r) {
-                        storeReducers.push({
+                        newReducer$.onNext({
                             path: [].concat(key).filter(Boolean),
                             fns: [].concat(r[key]).filter(Boolean)
                         });
@@ -130,10 +148,9 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             }
         };
 
-        const extras = Object.assign({}, storeExtras);
+        const extras = Object.assign({}, storeExtras, userExtra$.getValue());
 
         [].concat(effects).filter(Boolean).forEach(function (effect) {
-
             effect.call(null, actionsApi, extras).forEach(function (action) {
                 _dispatcher(action);
             });
@@ -148,14 +165,14 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
 
     function _addExtras(extras) {
         [].concat(extras).filter(Boolean).forEach(function (extra) {
-            storeExtras = Object.assign({}, storeExtras, extra);
+            newExtras$.onNext(extra);
         });
     }
 
     function _registerReducers(state, reducers) {
         for (var key in state) {
 
-            storeReducers.push({
+            newReducer$.onNext({
                 path: [key],
                 fns: [].concat(reducers).filter(Boolean)
             });
