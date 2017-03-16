@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "jest": "^19.0.2"
+    "jest": "^19.0.2",
+    "rx": "^4.1.0"
   },
   "devDependencies": {
     "immutable": "^4.0.0-rc.1",

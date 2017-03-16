@@ -1,16 +1,7 @@
-var Observable      = require('rxjs/Observable').Observable;
-var BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
-var Subject         = require('rxjs/Subject').Subject;
-
-require('rxjs/add/operator/scan');
-require('rxjs/add/operator/do');
-require('rxjs/add/operator/share');
-require('rxjs/add/observable/of');
-require('rxjs/add/operator/map');
-require('rxjs/add/operator/filter');
-require('rxjs/add/operator/mergeMap');
-require('rxjs/add/operator/distinctUntilChanged');
-require('rxjs/add/operator/withLatestFrom');
+var Rx = require('rx');
+var Observable      = Rx.Observable;
+var BehaviorSubject = Rx.BehaviorSubject;
+var Subject         = Rx.Subject;
 
 var Immutable       = require('immutable');
 var fromJS          = Immutable.fromJS;
@@ -56,8 +47,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     }, mergedInitialState).share();
 
     // Push all state updates back onto state$ value
-    stateUpdate$
-        .subscribe(state$);
+    stateUpdate$.subscribe(state$);
 
     var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
 
@@ -77,10 +67,10 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     function _dispatcher(action) {
         if (Array.isArray(action)) {
             return action.forEach(function(a) {
-                action$.next(a)
+                action$.onNext(a)
             });
         }
-        return action$.next(action);
+        return action$.onNext(action);
     }
 
     /**
