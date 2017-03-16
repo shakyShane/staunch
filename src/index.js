@@ -16,7 +16,7 @@ var Immutable       = require('immutable');
 var fromJS          = Immutable.fromJS;
 var Map             = Immutable.Map;
 
-module.exports = function createStore(initialState, initialReducers, initialEffects, initialMiddleware) {
+module.exports = function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
 
     var mergedInitialState = alwaysMap(initialState);
 
@@ -60,6 +60,13 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         .subscribe(state$);
 
     var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
+
+    var storeExtras = {
+        state$: state$,
+        action$: action$,
+        actionsWithState$: actionsWithState$,
+        actionsWithResultingStateUpdate$: actionsWithState$
+    };
 
     /**
      * Dispatch 1 or many actions
@@ -116,7 +123,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     }
 
     function _addEffects (effects) {
-        const out = {
+        const actionsApi = {
             ofType: function (actionName) {
                 return actionsWithState$.filter(function (incoming) {
                     return incoming.action.type === actionName;
@@ -124,8 +131,11 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             }
         };
 
+        const extras = Object.assign({}, storeExtras);
+
         [].concat(effects).filter(Boolean).forEach(function (effect) {
-            effect.call(null, out, state$).forEach(function (action) {
+
+            effect.call(null, actionsApi, extras).forEach(function (action) {
                 _dispatcher(action);
             });
         });
@@ -135,6 +145,12 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         [].concat(middleware).filter(Boolean).forEach(function (middleware) {
             middleware.call(null, api);
         })
+    }
+
+    function _addExtras(extras) {
+        [].concat(extras).filter(Boolean).forEach(function (extra) {
+            storeExtras = Object.assign({}, storeExtras, extra);
+        });
     }
 
     var api = {
@@ -200,6 +216,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     _addReducers(initialReducers);
     _addEffects(initialEffects);
     _addMiddleware(initialMiddleware);
+    _addExtras(initialExtras);
 
     return api;
 };

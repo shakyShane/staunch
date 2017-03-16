@@ -3,8 +3,8 @@ const Immutable   = require('immutable');
 const {fromJS}    = Immutable;
 
 require('rxjs/add/operator/mergeMap');
-const Rx = require('rxjs');
 
+const Rx = require('rxjs');
 
 const initialUserState = {
     name: '',
@@ -13,10 +13,12 @@ const initialUserState = {
 
 function userReducer (user, action) {
     if (!user) user = fromJS(initialUserState);
+
     switch (action.type) {
         case 'USER_NAME':
             return user.set('name', action.payload);
     }
+
     return user;
 }
 
@@ -36,7 +38,20 @@ function globalReducer (global, action) {
     return global;
 }
 
-describe('setup', function () {
+function singleEffect (action$) {
+    return action$
+        .ofType('GLOBAL_AUTH')
+        .flatMap(function () {
+            return Rx.Observable.concat(
+                Rx.Observable.of({
+                    type: 'USER_NAME',
+                    payload: 'shane'
+                })
+            )
+        })
+}
+
+describe('setup with single effect', function () {
 
     it('starts with initial state, reducers & effects', function () {
 
@@ -47,20 +62,7 @@ describe('setup', function () {
         }, {
             user: userReducer,
             global: globalReducer
-        }, [
-            function(action$, state$) {
-                return action$
-                    .ofType('GLOBAL_AUTH')
-                    .flatMap(function () {
-                        return Rx.Observable.concat(
-                            Rx.Observable.of({
-                                type: 'USER_NAME',
-                                payload: 'shane'
-                            })
-                        )
-                    })
-            }
-        ]);
+        }, singleEffect);
 
         store.dispatch({type: 'GLOBAL_AUTH', payload: true});
         expect(store.toJS().user.name).toEqual('shane');
