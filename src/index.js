@@ -17,7 +17,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     var action$ = new Subject();
 
     // reducers to act upon state
-    var storeReducers   = [];
+    var storeReducers = [];
 
     // stream
     var stateUpdate$ = action$
@@ -91,6 +91,15 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             }
 
             if (isPlainObject(r)) {
+                if (r.state) {
+                    if (r.reducers) {
+                        _registerReducers(r.state, r.reducers);
+                    }
+                    if (r.effects) {
+                        _addEffects(r.effects);
+                    }
+                    return;
+                }
                 /**
                  * if path/fn pairs given
                  */
@@ -143,6 +152,25 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         });
     }
 
+    function _registerReducers(state, reducers) {
+        for (var key in state) {
+
+            storeReducers.push({
+                path: [key],
+                fns: [].concat(reducers).filter(Boolean)
+            });
+
+            // now init with action
+            _dispatcher({
+                type: '@@NS-INIT('+ key +')',
+                payload: {
+                    path: [key],
+                    value: state[key]
+                }
+            });
+        }
+    }
+
     var api = {
         state$: state$,
         action$: action$,
@@ -154,20 +182,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             var effects  = input.effects;
 
             if (reducers) {
-                for (var key in state) {
-                    storeReducers.push({
-                        path: [key],
-                        fns: [].concat(reducers).filter(Boolean)
-                    });
-                    // now init with action
-                    _dispatcher({
-                        type: '@@NS-INIT('+ key +')',
-                        payload: {
-                            path: [key],
-                            value: state[key]
-                        }
-                    });
-                }
+                _registerReducers(state, reducers);
             }
 
             if (effects) {
