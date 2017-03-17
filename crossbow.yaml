@@ -2,7 +2,11 @@ config:
   bin: node_modules/.bin
 
 tasks:
-  commit:
+  test:
     - tsc
+    - jest
+
+  commit:
+    - test
     - '@sh git add .'
     - '@sh git commit -m "$CB_CLI_TRAILING"'
