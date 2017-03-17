@@ -35,6 +35,13 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         return acc.concat(incoming);
     }, []).share().subscribe(mappedReducers);
 
+    // responses
+    var storeResponses = new BehaviorSubject([]);
+    var newResponses   = new Subject();
+    newResponses.scan(function (acc, incoming) {
+        return acc.concat(incoming);
+    }, []).share().subscribe(storeResponses);
+
     // stream
     var stateUpdate$ = action$
         .do(function (action) {
@@ -97,6 +104,36 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     };
 
     /**
+     * Setup responses for declartive cross-domain communication
+     */
+    actionsWithState$
+        .withLatestFrom(storeResponses)
+        .filter(function (incoming) {
+            const storeResponses = incoming[1];
+            return storeResponses.length > 0;
+        })
+        .flatMap(incoming => {
+            const actionWithState   = incoming[0];
+            const action = actionWithState.action;
+            const state  = actionWithState.state;
+
+            const storeResponses    = incoming[1];
+            const actionName        = action.type;
+            const matchingResponses = storeResponses.filter(x => x.name === actionName);
+
+            const newActions = matchingResponses.map(x => {
+                return {
+                    type: x.targetName,
+                    payload: state.getIn(x.path, Map({})).toJS(),
+                    via: `[response to (${actionName})]`
+                }
+            });
+
+            return Rx.Observable.from(newActions);
+        })
+        .subscribe(action => _dispatcher(action));
+
+    /**
      * Dispatch 1 or many actions
      * @param action
      * @returns {*}
@@ -154,7 +191,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                     Object.keys(r.reducers).forEach(function (name) {
                         const currentFn = r.reducers[name];
                         newMappedReducer$.onNext({
-                            path: r.path,
+                            path: [].concat(r.path),
                             fns: [currentFn],
                             name
                         });
@@ -225,15 +262,29 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         }
     }
 
+    function _addResponses (responses) {
+        [].concat(responses).filter(Boolean).forEach(function (resp) {
+            Object.keys(resp).forEach(function (actionName) {
+                const item = resp[actionName];
+                newResponses.onNext({
+                    name: actionName,
+                    path: [].concat(item.path).filter(Boolean),
+                    targetName: item.action
+                });
+            });
+        });
+    }
+
     var api = {
         state$: state$,
         action$: action$,
         actionsWithState$: actionsWithState$,
         actionsWithResultingStateUpdate$: actionsWithState$,
         register: function (input) {
-            var state    = input.state;
-            var reducers = input.reducers;
-            var effects  = input.effects;
+            var state     = input.state;
+            var reducers  = input.reducers;
+            var effects   = input.effects;
+            var responses = input.responses;
 
             if (reducers) {
                 _addReducers(reducers);
@@ -246,6 +297,11 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             if (state) {
                 _registerOnStateTree(state);
             }
+
+            if (responses) {
+                _addResponses(responses);
+            }
+
 
             return api;
         },
