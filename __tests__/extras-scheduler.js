@@ -1,4 +1,4 @@
-const createStore = require('../src');
+const { createStore } = require('../dist');
 const Rx = require('rxjs');
 const assert = require('assert');
 

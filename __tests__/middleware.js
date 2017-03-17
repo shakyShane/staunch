@@ -1,4 +1,4 @@
-const createStore = require('../src');
+const { createStore } = require('../dist');
 
 describe('supporting middleware', function () {
     // const spy = jest.spy();

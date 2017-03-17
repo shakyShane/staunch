@@ -1,4 +1,4 @@
-const createStore = require('../src');
+const { createStore } = require('../dist');
 const assert = require('assert');
 
 it('Action fires from an object only', function () {

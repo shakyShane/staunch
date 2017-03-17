@@ -1,49 +1,47 @@
-var Rx              = require('rx');
-var Observable      = Rx.Observable;
-var BehaviorSubject = Rx.BehaviorSubject;
-var Subject         = Rx.Subject;
+import Rx = require('rx');
+import Immutable = require('immutable');
 
-var Immutable       = require('immutable');
-var fromJS          = Immutable.fromJS;
-var Map             = Immutable.Map;
+const Observable = Rx.Observable;
+const BehaviorSubject = Rx.BehaviorSubject;
+const Subject = Rx.Subject;
 
-module.exports = function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
+export function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
 
-    var mergedInitialState = alwaysMap(initialState);
-    var state$             = new BehaviorSubject(mergedInitialState);
+    const mergedInitialState = alwaysMap(initialState);
+    const state$ = new BehaviorSubject(mergedInitialState);
 
-    var userExtra$ = new BehaviorSubject({});
-    var newExtras$   = new Subject();
+    const userExtra$ = new BehaviorSubject({});
+    const newExtras$ = new Subject();
     newExtras$.scan(function (extras, incoming) {
         return Object.assign({}, extras, incoming);
     }, {}).share().subscribe(userExtra$);
 
     // stream of actions
-    var action$ = new Subject();
+    const action$ = new Subject();
 
     // reducers to act upon state
-    var storeReducers = new BehaviorSubject([]);
-    var newReducer$   = new Subject();
+    const storeReducers = new BehaviorSubject([]);
+    const newReducer$ = new Subject();
     newReducer$.scan(function (acc, incoming) {
         return acc.concat(incoming);
     }, []).share().subscribe(storeReducers);
 
     // Mapped reducers
-    var mappedReducers    = new BehaviorSubject([]);
-    var newMappedReducer$ = new Subject();
+    const mappedReducers = new BehaviorSubject([]);
+    const newMappedReducer$ = new Subject();
     newMappedReducer$.scan(function (acc, incoming) {
         return acc.concat(incoming);
     }, []).share().subscribe(mappedReducers);
 
     // responses
-    var storeResponses = new BehaviorSubject([]);
-    var newResponses   = new Subject();
+    const storeResponses = new BehaviorSubject([]);
+    const newResponses = new Subject();
     newResponses.scan(function (acc, incoming) {
         return acc.concat(incoming);
     }, []).share().subscribe(storeResponses);
 
     // stream
-    var stateUpdate$ = action$
+    const stateUpdate$ = action$
         .do(function (action) {
             if (!isPlainObject(action)) {
                 return console.error('Please provide an object with at least a `type` property');
@@ -54,35 +52,33 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         })
         .withLatestFrom(storeReducers, mappedReducers, function (action, reducers, mappedReducers) {
 
-            const mappedReducersThatMatchAction = mappedReducers.filter(function (reducer) {
-                return reducer.name === action.type
-            });
+            const mappedReducersThatMatchAction = mappedReducers
+                .filter((reducer) => {
+                    return reducer.name === action.type;
+                });
 
             return {
-                action: action, 
+                action: action,
                 reducers: mappedReducersThatMatchAction.concat(reducers),
             }
         })
-        .scan(function(accMap, incoming) {
+        .scan(function (stateMap, {action, reducers}) {
 
-            var action = incoming.action;
-            var reducers = incoming.reducers;
-
-            var actionType = action.type || (typeof action === 'string' ? action : '');
+            const actionType = action.type || (typeof action === 'string' ? action : '');
 
             // is it a @@namespace ?
             if (actionType.indexOf('@@NS-INIT') === 0) {
 
-                return accMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value))
+                return stateMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value))
 
             } else {
                 return reducers.reduce(function (outgoingValue, reducer) {
-                    return outgoingValue.updateIn(reducer.path, function(currentValue) {
+                    return outgoingValue.updateIn(reducer.path, function (currentValue) {
                         return reducer.fns.reduce(function (value, fn) {
                             return fn.call(null, value, action, outgoingValue);
                         }, currentValue)
                     });
-                }, accMap);
+                }, stateMap);
             }
         }, mergedInitialState).share();
 
@@ -94,37 +90,41 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         })
         .subscribe(state$);
 
-    var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
+    /**
+     * Create a stream that has updates + resulting state updates
+     */
+    const actionsWithState$ = action$.withLatestFrom(state$, function (action, state) {
+        return {
+            action,
+            state
+        }
+    });
 
-    var storeExtras = {
-        state$: state$,
-        action$: action$,
-        actionsWithState$: actionsWithState$,
+    const storeExtras = {
+        state$,
+        action$,
+        actionsWithState$,
         actionsWithResultingStateUpdate$: actionsWithState$
     };
 
     /**
-     * Setup responses for declartive cross-domain communication
+     * Setup responses for declarative cross-domain communication
      */
     actionsWithState$
         .withLatestFrom(storeResponses)
-        .filter(function (incoming) {
-            const storeResponses = incoming[1];
-            return storeResponses.length > 0;
-        })
+        .filter(([_, storeResponses]) => storeResponses.length > 0)
         .flatMap(incoming => {
-            const actionWithState   = incoming[0];
-            const action = actionWithState.action;
-            const state  = actionWithState.state;
-
+            const {action, state}   = incoming[0];
             const storeResponses    = incoming[1];
             const actionName        = action.type;
-            const matchingResponses = storeResponses.filter(x => x.name === actionName);
+
+            const matchingResponses = storeResponses
+                .filter(response => response.name === actionName);
 
             const newActions = matchingResponses.map(x => {
                 return {
                     type: x.targetName,
-                    payload: state.getIn(x.path, Map({})).toJS(),
+                    payload: state.getIn(x.path, getMap({})).toJS(),
                     via: `[response to (${actionName})]`
                 }
             });
@@ -154,44 +154,42 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
      * @private
      */
     function _addReducers (reducers) {
-        [].concat(reducers).filter(Boolean).forEach(function (r) {
-            /**
-             *
-             */
-            if (typeof r === 'function') {
+        alwaysArray(reducers).forEach(function (reducer) {
+
+            if (typeof reducer === 'function') {
                 newReducer$.onNext({
                     path: [],
-                    fns: [].concat(r).filter(Boolean)
+                    fns: [].concat(reducer).filter(Boolean)
                 });
             }
 
-            if (isPlainObject(r)) {
-                if (r.state) {
-                    if (r.reducers) {
+            if (isPlainObject(reducer)) {
+                if (reducer.state) {
+                    if (reducer.reducers) {
 
                         /**
                          * if 'state' and 'reducers' key were found,
                          * we bind the reducers to that top-level state key
                          */
-                        Object.keys(r.state).forEach(function (stateKey) {
-                            _addReducers({path: stateKey,  fns: r.reducers});
+                        Object.keys(reducer.state).forEach(function (stateKey) {
+                            _addReducers({path: stateKey,  fns: reducer.reducers});
                         });
 
-                        /**
-                         *
-                         */
-                        _registerOnStateTree(r.state);
                     }
-                    if (r.effects) {
-                        _addEffects(r.effects);
+                    if (reducer.effects) {
+                        _addEffects(reducer.effects);
                     }
+                    /**
+                     *
+                     */
+                    _registerOnStateTree(reducer.state);
                     return;
                 }
-                if (r.path && r.reducers) {
-                    Object.keys(r.reducers).forEach(function (name) {
-                        const currentFn = r.reducers[name];
+                if (reducer.path && reducer.reducers) {
+                    Object.keys(reducer.reducers).forEach(function (name) {
+                        const currentFn = reducer.reducers[name];
                         newMappedReducer$.onNext({
-                            path: [].concat(r.path),
+                            path: [].concat(reducer.path),
                             fns: [currentFn],
                             name
                         });
@@ -201,17 +199,17 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                 /**
                  * if path/fn pairs given
                  */
-                if (r.path && r.fns) {
+                if (reducer.path && reducer.fns) {
                     newReducer$.onNext({
-                        path: [].concat(r.path).filter(Boolean),
-                        fns: [].concat(r.fns).filter(Boolean)
+                        path: [].concat(reducer.path).filter(Boolean),
+                        fns: [].concat(reducer.fns).filter(Boolean)
                     });
                 } else {
                     // redux style key: fn pairs
-                    for (var key in r) {
+                    for (let key in reducer) {
                         newReducer$.onNext({
                             path: [].concat(key).filter(Boolean),
-                            fns: [].concat(r[key]).filter(Boolean)
+                            fns: [].concat(reducer[key]).filter(Boolean)
                         });
                     }
                 }
@@ -230,7 +228,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
 
         const extras = Object.assign({}, storeExtras, userExtra$.getValue());
 
-        [].concat(effects).filter(Boolean).forEach(function (effect) {
+        alwaysArray(effects).forEach(function (effect) {
             effect.call(null, actionsApi, extras).forEach(function (action) {
                 _dispatcher(action);
             });
@@ -238,19 +236,19 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     }
 
     function _addMiddleware(middleware) {
-        [].concat(middleware).filter(Boolean).forEach(function (middleware) {
+        alwaysArray(middleware).forEach(function (middleware) {
             middleware.call(null, api);
         })
     }
 
     function _addExtras(extras) {
-        [].concat(extras).filter(Boolean).forEach(function (extra) {
+        alwaysArray(extras).forEach(function (extra) {
             newExtras$.onNext(extra);
         });
     }
 
     function _registerOnStateTree(state) {
-        for (var key in state) {
+        for (let key in state) {
             // now init with action
             _dispatcher({
                 type: '@@NS-INIT('+ key +')',
@@ -263,7 +261,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     }
 
     function _addResponses (responses) {
-        [].concat(responses).filter(Boolean).forEach(function (resp) {
+        alwaysArray(responses).forEach(function (resp) {
             Object.keys(resp).forEach(function (actionName) {
                 const item = resp[actionName];
                 newResponses.onNext({
@@ -275,16 +273,13 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         });
     }
 
-    var api = {
+    const api = {
         state$: state$,
         action$: action$,
         actionsWithState$: actionsWithState$,
         actionsWithResultingStateUpdate$: actionsWithState$,
         register: function (input) {
-            var state     = input.state;
-            var reducers  = input.reducers;
-            var effects   = input.effects;
-            var responses = input.responses;
+            const {state, reducers, effects, responses} = input;
 
             if (reducers) {
                 _addReducers(reducers);
@@ -302,7 +297,6 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                 _addResponses(responses);
             }
 
-
             return api;
         },
         addReducers: function (reducers) {
@@ -314,23 +308,23 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             return api;
         },
         getState: function (path) {
-            var lookup = [].concat(path).filter(Boolean);
-            return state$.getValue().getIn(lookup, Map({}));
+            const lookup = alwaysArray(path);
+            return state$.getValue().getIn(lookup, getMap({}));
         },
         toJS: function (path) {
-            var lookup = [].concat(path).filter(Boolean);
-            return state$.getValue().getIn(lookup, Map({})).toJS();
+            const lookup = alwaysArray(path);
+            return state$.getValue().getIn(lookup, getMap({})).toJS();
         },
         toJSON: function (path) {
-            var lookup = [].concat(path).filter(Boolean);
-            return state$.getValue().getIn(lookup, Map({})).toJSON();
+            const lookup = alwaysArray(path);
+            return state$.getValue().getIn(lookup, getMap({})).toJSON();
         },
         addMiddleware: function (middleware) {
             _addMiddleware(middleware);
             return api;
         },
         once: function (actions) {
-            const lookup = [].concat(actions);
+            const lookup = alwaysArray(actions);
             return actionsWithState$.filter(x => {
                 return lookup.indexOf(x.action.type) > -1;
             }).take(1);
@@ -343,7 +337,13 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     _addMiddleware(initialMiddleware);
     _addExtras(initialExtras);
 
-    function alwaysMap (input) { return Map.isMap(input) ? input : fromJS(input || {}) };
+    function alwaysMap (input) {
+        return Immutable.Map.isMap(input) ? input : Immutable.fromJS(input || {})
+    }
+
+    function alwaysArray (input) {
+        return [].concat(input).filter(Boolean)
+    }
 
     function isPlainObject(value) {
         var objectTag = '[object Object]';
@@ -351,6 +351,12 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         return Object.prototype.toString.call(value) === objectTag;
     }
 
+    function getMap(incoming) {
+        return Immutable.Map(incoming);
+    }
+
     return api;
 };
+
+export default createStore;
 

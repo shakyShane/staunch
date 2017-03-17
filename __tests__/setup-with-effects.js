@@ -1,4 +1,4 @@
-const createStore = require('../src');
+const { createStore } = require('../dist');
 const Immutable   = require('immutable');
 const Rx          = require('rx');
 const {fromJS}    = Immutable;
