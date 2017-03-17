@@ -10,11 +10,11 @@ it('Action fires from an object only', function () {
                 name: 'shane'
             }
         },
-        reducers: [
-            function (user) {
+        reducers: {
+            user: function (user) {
                 return user.set('id', '01');
             }
-        ]
+        }
     })
         .dispatch({type: 'anything'})
         .getState()
@@ -33,8 +33,8 @@ it('Action fires from a string only', function () {
             }
         },
         reducers: [
-            function (user) {
-                return user.set('id', '01');
+            function (state) {
+                return state.setIn(['user', 'id'], '01');
             }
         ]
     })
@@ -42,7 +42,7 @@ it('Action fires from a string only', function () {
         .getState()
         .toJS();
 
-    assert.equal(result.user.id, '01', 'Action fires from a string only');
+    expect(result.user.id).toEqual('01');
 });
 
 
@@ -55,8 +55,8 @@ it('Action fires from multiple', function () {
                 name: 'shane'
             }
         },
-        reducers: [
-            function (user, action) {
+        reducers: {
+            user: function (user, action) {
                 switch (action.type) {
                     case 'USER_ID':
                         return user.set('id', action.payload);
@@ -65,7 +65,7 @@ it('Action fires from multiple', function () {
                 }
                 return user;
             }
-        ]
+        }
     })
         .dispatch({type: 'USER_ID', payload: '01'})
         .dispatch({type: 'USER_NAME', payload: 'Shane'})
@@ -120,23 +120,84 @@ it('Add reducer function tied to a path (id)', function () {
 
 it('Add reducer with direct action -> fn mapping', function () {
 
-    const input = {
-        path: ['user'],
-        reducers: {
-            ['USER_ID']: function (user, action) {
-                return state.setIn(['user', 'id'], action.payload);
+    const mappedReducers = [
+        {
+            path: ['user'],
+            reducers: {
+                ['USER_ID']: function (user, action) {
+                    return user.set('id', action.payload);
+                },
+                ['USER_LOGOUT']: function (user, action) {
+                    return user.set('id', action.payload);
+                },
+            }
+        },
+        {
+            path: ['global'],
+            reducers: {
+                ['USER_ID']: function (global, action) {
+                    return global.set('user', {id: action.payload});
+                }
             }
         }
-    };
+    ];
 
-    const store = createStore({user: {name: 'shane'}}, input);
+    const store = createStore({
+        user: {name: 'shane'},
+        global: {}
+    }, mappedReducers);
 
-    // store.actionsWithState$.subscribe(function (incoming) {
-    //     assert.equal(incoming.action.type, 'USER_ID', 'action has type');
-    //     assert.equal(incoming.action.payload, '01', 'action has payload');
-    // });
+    store.actionsWithState$.subscribe(function (incoming) {
+        assert.equal(incoming.action.type, 'USER_ID', 'action has type');
+        assert.equal(incoming.action.payload, '01', 'action has payload');
+    });
 
-    const result = store.dispatch({type: 'USER_ID', payload: '01'}).getState().toJS();
-    expect(result.user.id).toBe('01');
+    const result = store.dispatch({type: 'USER_ID', payload: '01'}).toJS();
+    expect(result.global.user.id).toEqual('01');
+});
+
+it('Add reducer with direct action -> fn mapping at register point', function () {
+
+    const mappedReducers = [
+        {
+            path: ['user'],
+            reducers: {
+                ['USER_ID']: function (user, action) {
+                    return user.set('id', action.payload);
+                },
+                ['USER_LOGOUT']: function (user, action) {
+                    return user.set('id', action.payload);
+                },
+            }
+        },
+        {
+            path: ['global'],
+            reducers: {
+                ['USER_ID']: function (global, action) {
+                    return global.set('user', {id: action.payload});
+                }
+            }
+        }
+    ];
+
+    const store = createStore();
+
+    store.register({
+        state: {
+            user: {},
+            global: {}
+        },
+        reducers: mappedReducers
+    });
+
+    store.actionsWithState$.subscribe(function (incoming) {
+        assert.equal(incoming.action.type, 'USER_ID', 'action has type');
+        assert.equal(incoming.action.payload, '01', 'action has payload');
+    });
+
+    const result = store.dispatch({type: 'USER_ID', payload: '01'}).toJS();
+    // console.log(result);
+    expect(result.global.user.id).toEqual('01');
+    expect(result.user.id).toEqual('01');
 });
 

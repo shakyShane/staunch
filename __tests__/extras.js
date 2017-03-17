@@ -18,15 +18,15 @@ it('allows user-provided extras', function () {
                 name: 'shane'
             }
         },
-        reducers: [
-            function (user, action) {
+        reducers: {
+            user: function (user, action) {
                 switch (action.type) {
                     case 'USER_ID':
                         return user.set('id', action.payload);
                 }
                 return user;
             }
-        ],
+        },
         effects: [
             function (action$, extras) {
                 return action$.ofType('USER_REGISTER')

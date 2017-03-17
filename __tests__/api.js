@@ -81,3 +81,22 @@ it('addReducers() Add reducer function tied to a path (id) (name)', function () 
     expect(result.user.id).toEqual('01');
     expect(result.user.name).toEqual('Shane');
 });
+
+it('once() - can respond a maximum of 1 time to an action', function () {
+
+    const myMock = jest.fn();
+
+    const store = createStore({}, function (state) {
+        return state;
+    });
+
+    store.once('anything')
+        .subscribe(x => myMock());
+
+    store
+        .dispatch({type: 'anything'})
+        .dispatch({type: 'anything'})
+        .dispatch({type: 'anything'});
+
+    expect(myMock.mock.calls.length).toEqual(1);
+});

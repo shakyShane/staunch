@@ -58,7 +58,7 @@ describe('setup with root reducers (mixed types)', function () {
             {type: 'USER_NAME', payload: 'shane'}
         ])
         .toJS();
-
+        
         expect(result.global.isAuth).toEqual(true);
         expect(result.user.name).toEqual('shane');
     });

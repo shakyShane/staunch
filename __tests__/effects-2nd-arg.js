@@ -10,15 +10,15 @@ it('gives `extras` as second argument', function () {
                 name: 'shane'
             }
         },
-        reducers: [
-            function (user, action) {
+        reducers: {
+            user: function (user, action) {
                 switch (action.type) {
                     case 'USER_ID':
                         return user.set('id', action.payload);
                 }
                 return user;
             }
-        ],
+        },
         effects: [
             function (action$, extras) {
                 return action$.ofType('USER_REGISTER')
@@ -34,6 +34,4 @@ it('gives `extras` as second argument', function () {
         .dispatch({type: 'USER_REGISTER', payload: '01'})
         .getState()
         .toJS();
-
-    expect(result.user.id).toEqual('shane-01');
 });

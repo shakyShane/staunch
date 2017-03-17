@@ -1,4 +1,4 @@
-var Rx = require('rx');
+var Rx              = require('rx');
 var Observable      = Rx.Observable;
 var BehaviorSubject = Rx.BehaviorSubject;
 var Subject         = Rx.Subject;
@@ -28,44 +28,64 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         return acc.concat(incoming);
     }, []).share().subscribe(storeReducers);
 
+    // Mapped reducers
+    var mappedReducers    = new BehaviorSubject([]);
+    var newMappedReducer$ = new Subject();
+    newMappedReducer$.scan(function (acc, incoming) {
+        return acc.concat(incoming);
+    }, []).share().subscribe(mappedReducers);
 
     // stream
     var stateUpdate$ = action$
         .do(function (action) {
             if (!isPlainObject(action)) {
-                console.error('Please provide an object with at least a `type` property');
+                return console.error('Please provide an object with at least a `type` property');
+            }
+            if ((typeof action.type) !== 'string') {
+                return console.error('Action was missing a `type` property', action);
             }
         })
-        .withLatestFrom(storeReducers, function (action, reducers) {
+        .withLatestFrom(storeReducers, mappedReducers, function (action, reducers, mappedReducers) {
+
+            const mappedReducersThatMatchAction = mappedReducers.filter(function (reducer) {
+                return reducer.name === action.type
+            });
+
             return {
-                action: action, reducers: reducers
+                action: action, 
+                reducers: mappedReducersThatMatchAction.concat(reducers),
             }
         })
         .scan(function(accMap, incoming) {
 
-        var action = incoming.action;
-        var reducers = incoming.reducers;
+            var action = incoming.action;
+            var reducers = incoming.reducers;
 
-        var actionType = action.type || (typeof action === 'string' ? action : '');
+            var actionType = action.type || (typeof action === 'string' ? action : '');
 
-        // is it a @@namespace ?
-        if (actionType.indexOf('@@NS-INIT') === 0) {
+            // is it a @@namespace ?
+            if (actionType.indexOf('@@NS-INIT') === 0) {
 
-            return accMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value))
+                return accMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value))
 
-        } else {
-            return reducers.reduce(function (outgoingValue, reducer) {
-                return outgoingValue.updateIn(reducer.path, function(currentValue) {
-                    return reducer.fns.reduce(function (value, fn) {
-                        return fn.call(null, value, action, outgoingValue);
-                    }, currentValue)
-                });
-            }, accMap);
-        }
-    }, mergedInitialState).share();
+            } else {
+                return reducers.reduce(function (outgoingValue, reducer) {
+                    return outgoingValue.updateIn(reducer.path, function(currentValue) {
+                        return reducer.fns.reduce(function (value, fn) {
+                            return fn.call(null, value, action, outgoingValue);
+                        }, currentValue)
+                    });
+                }, accMap);
+            }
+        }, mergedInitialState).share();
 
     // Push all state updates back onto state$ value
-    stateUpdate$.subscribe(state$);
+    stateUpdate$
+        .catch(function (err) {
+            // console.error(err);
+            return Rx.Observable.throw(err);
+        })
+        .subscribe(state$);
 
     var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) { return {action: action, state: state} });
 
@@ -111,7 +131,19 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             if (isPlainObject(r)) {
                 if (r.state) {
                     if (r.reducers) {
-                        _registerReducers(r.state, r.reducers);
+
+                        /**
+                         * if 'state' and 'reducers' key were found,
+                         * we bind the reducers to that top-level state key
+                         */
+                        Object.keys(r.state).forEach(function (stateKey) {
+                            _addReducers({path: stateKey,  fns: r.reducers});
+                        });
+
+                        /**
+                         *
+                         */
+                        _registerOnStateTree(r.state);
                     }
                     if (r.effects) {
                         _addEffects(r.effects);
@@ -119,7 +151,15 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                     return;
                 }
                 if (r.path && r.reducers) {
-                    console.log('got here');
+                    Object.keys(r.reducers).forEach(function (name) {
+                        const currentFn = r.reducers[name];
+                        newMappedReducer$.onNext({
+                            path: r.path,
+                            fns: [currentFn],
+                            name
+                        });
+                    });
+                    return;
                 }
                 /**
                  * if path/fn pairs given
@@ -172,14 +212,8 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         });
     }
 
-    function _registerReducers(state, reducers) {
+    function _registerOnStateTree(state) {
         for (var key in state) {
-
-            newReducer$.onNext({
-                path: [key],
-                fns: [].concat(reducers).filter(Boolean)
-            });
-
             // now init with action
             _dispatcher({
                 type: '@@NS-INIT('+ key +')',
@@ -202,7 +236,8 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
             var effects  = input.effects;
 
             if (reducers) {
-                _registerReducers(state, reducers);
+                _addReducers(reducers);
+                _registerOnStateTree(state);
             }
 
             if (effects) {
@@ -225,7 +260,7 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         },
         toJS: function (path) {
             var lookup = [].concat(path).filter(Boolean);
-            return state$.getValue().getIn(lookup).toJS();
+            return state$.getValue().getIn(lookup, Map({})).toJS();
         },
         toJSON: function (path) {
             var lookup = [].concat(path).filter(Boolean);
@@ -234,6 +269,12 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
         addMiddleware: function (middleware) {
             _addMiddleware(middleware);
             return api;
+        },
+        once: function (actions) {
+            const lookup = [].concat(actions);
+            return actionsWithState$.filter(x => {
+                return lookup.indexOf(x.action.type) > -1;
+            }).take(1);
         }
     };
 
