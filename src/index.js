@@ -237,11 +237,14 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
 
             if (reducers) {
                 _addReducers(reducers);
-                _registerOnStateTree(state);
             }
 
             if (effects) {
                 _addEffects(effects);
+            }
+
+            if (state) {
+                _registerOnStateTree(state);
             }
 
             return api;

@@ -201,3 +201,27 @@ it('Add reducer with direct action -> fn mapping at register point', function ()
     expect(result.user.id).toEqual('01');
 });
 
+
+it('registers state tree entry (for init) without any reducers (register)', function () {
+
+    const store = createStore();
+
+    store.register({
+        state: {
+            browser: {
+                support: {
+                    mouse: true,
+                    touch: false
+                }
+            }
+        }
+    });
+
+    store.actionsWithState$.subscribe(function (incoming) {
+        console.log(incoming);
+    });
+
+    const result = store.toJS();
+
+    expect(result.browser.support.mouse).toEqual(true);
+});
