@@ -118,6 +118,9 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
                     }
                     return;
                 }
+                if (r.path && r.reducers) {
+                    console.log('got here');
+                }
                 /**
                  * if path/fn pairs given
                  */
@@ -240,13 +243,14 @@ module.exports = function createStore(initialState, initialReducers, initialEffe
     _addMiddleware(initialMiddleware);
     _addExtras(initialExtras);
 
+    function alwaysMap (input) { return Map.isMap(input) ? input : fromJS(input || {}) };
+
+    function isPlainObject(value) {
+        var objectTag = '[object Object]';
+
+        return Object.prototype.toString.call(value) === objectTag;
+    }
+
     return api;
 };
 
-function alwaysMap (input) { return Map.isMap(input) ? input : fromJS(input || {}) };
-
-function isPlainObject(value) {
-    var objectTag = '[object Object]';
-
-    return Object.prototype.toString.call(value) === objectTag;
-}

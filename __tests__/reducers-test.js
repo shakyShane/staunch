@@ -118,3 +118,25 @@ it('Add reducer function tied to a path (id)', function () {
     assert.equal(result.user.id, '01', 'Add reducer function tied to a path (id)');
 });
 
+it('Add reducer with direct action -> fn mapping', function () {
+
+    const input = {
+        path: ['user'],
+        reducers: {
+            ['USER_ID']: function (user, action) {
+                return state.setIn(['user', 'id'], action.payload);
+            }
+        }
+    };
+
+    const store = createStore({user: {name: 'shane'}}, input);
+
+    // store.actionsWithState$.subscribe(function (incoming) {
+    //     assert.equal(incoming.action.type, 'USER_ID', 'action has type');
+    //     assert.equal(incoming.action.payload, '01', 'action has payload');
+    // });
+
+    const result = store.dispatch({type: 'USER_ID', payload: '01'}).getState().toJS();
+    expect(result.user.id).toBe('01');
+});
+
