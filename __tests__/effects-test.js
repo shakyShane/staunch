@@ -38,3 +38,36 @@ it('supports effects at register time', function () {
     // console.log(result);
     expect(result.user.id).toEqual('01');
 });
+
+it('Adds meta information to the action', function () {
+    const store = createStore();
+
+    store.action$
+        .take(3)
+        .last()
+        .subscribe(x => {
+            expect(x.via).toEqual('[effect]');
+        });
+
+    store.register({
+        state: {
+            user: {
+                name: 'shane'
+            }
+        },
+        effects: [
+            function (action$) {
+                return action$.ofType('USER_REGISTER')
+                    .map(function(incoming) {
+                        return {
+                            type: 'USER_ID',
+                            payload: incoming.action.payload
+                        }
+                    })
+            }
+        ]
+    })
+        .dispatch({type: 'USER_REGISTER', payload: '01'})
+        .getState()
+        .toJS();
+});

@@ -229,7 +229,16 @@ export function createStore(initialState, initialReducers, initialEffects, initi
         const extras = Object.assign({}, storeExtras, userExtra$.getValue());
 
         alwaysArray(effects).forEach(function (effect) {
-            effect.call(null, actionsApi, extras).forEach(function (action) {
+            effect.call(null, actionsApi, extras)
+            // Make it clear where this action originated from
+            .map(action => {
+                return {
+                    ...action,
+                    via: '[effect]',
+                    name: (effect.name || '')
+                }
+            })
+            .forEach(function (action) {
                 _dispatcher(action);
             });
         });

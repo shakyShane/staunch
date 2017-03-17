@@ -1,0 +1,8 @@
+config:
+  bin: node_modules/.bin
+
+tasks:
+  release:
+    - tsc
+    - '@sh git add .'
+    - '@sh git commit -m "$CB_CLI_TRAILING"'
