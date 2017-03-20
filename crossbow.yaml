@@ -1,12 +1,34 @@
-config:
-  bin: node_modules/.bin
-
 tasks:
   test:
-    - tsc
-    - jest
+    - '@npm tsc'
+    - browser
+    - '@npm jest'
 
   commit:
     - test
     - '@sh git add .'
     - '@sh git commit -m "$CB_CLI_TRAILING"'
+
+  browser:
+    description: A special build for Browsers
+    tasks:
+      - browserify
+      - uglify
+
+  browserify:
+    description: A special build for browser-globals
+    tasks:
+      - >
+        @npm browserify dist/index.js -d |
+        exorcist dist/browser.js.map
+        > dist/browser.js
+
+  uglify:
+    description: Minify the browser build
+    tasks:
+      - >
+        @npm uglifyjs dist/browser.js
+        --mangle --screw-ie8
+        --source-map-url browser.min.js.map
+        --in-source-map dist/browser.js.map
+        --source-map dist/browser.min.js.map > dist/browser.min.js

@@ -374,3 +374,8 @@ export function createStore(initialState, initialReducers, initialEffects, initi
 
 export default createStore;
 
+if (window && ((typeof window.staunch) === 'undefined')) {
+    window.staunch = {
+        createStore
+    };
+}
