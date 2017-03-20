@@ -307,6 +307,12 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
             return actionsWithState$.filter(function (x) {
                 return lookup.indexOf(x.action.type) > -1;
             }).take(1);
+        },
+        changes: function (path) {
+            var lookup = alwaysArray(path);
+            return state$.map(function (x) { return x.getIn(lookup); })
+                .distinctUntilChanged()
+                .skip(1);
         }
     };
     // add initial ones
@@ -330,6 +336,5 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     return api;
 }
 exports.createStore = createStore;
-;
 exports.default = createStore;
 //# sourceMappingURL=index.js.map

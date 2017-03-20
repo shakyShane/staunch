@@ -11,5 +11,6 @@ export declare function createStore(initialState: any, initialReducers: any, ini
     toJSON: (path: any) => any;
     addMiddleware: (middleware: any) => any;
     once: (actions: any) => any;
+    changes: (path: any) => any;
 };
 export default createStore;
