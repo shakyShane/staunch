@@ -3,7 +3,26 @@
 > loyal, firm, and dependable - solid or substantial in construction
 
 Staunch is a highly opinionated Redux-style state management system for large-scale apps. Powered by 
-ImmutableJS & RxJS - plug it into any codebase.
+ImmutableJS & RxJS. It's designed to handle both the synchronous state-updates we've all come to love, along
+with providing best-in-game async support via the mighty RxJS.
+ 
+We're talking serious power/safety here - combine this with a tiny view library Preact, and you have the tools
+to build something amazing.
+
+**Example bundle 41.3kb (min+gzipped)**
+
+ - ImmutableJS
+ - Rx-Lite
+ - Staunch-store
+ - Preact
+
+So Staunch, Rx-Lite, ImmutableJS + Preact all together weigh in at less than 42kb combined - this means it's 
+not really suitable for micro-apps, but if you're already using Immutable or Rx in a project, you can add Staunch
+on top without issue :)
+
+## Examples
+
+ - [counter](http://jsbin.com/qawilefifa/1/edit?html,js,output)
 
 ## Install
 
@@ -15,11 +34,7 @@ yarn add rx immutable staunch-store
 npm i rx immutable staunch-store --save
 ```
 
-## Features
-Combining the power of ImmutableJS and RxJS enables some pretty incredible 
-features.
-
-### Changes feed for entire store, or any part of the state object. 
+### Change feed for entire store, or any part of the state object. 
 No joke, just specify which 'path' on the tree you're interested in and you'll only be notified
 when the data has actually changed.
 
@@ -38,6 +53,9 @@ store.changes('user')
     .subscribe(user => 
         console.log('updated state', user)
     );
+
+// dispatch an action
+store.dispatch({type: 'USER_AUTH'});
 ```
 
 ### Complete safety and removal of defensive coding patterns
