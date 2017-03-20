@@ -22,7 +22,7 @@ on top without issue :)
 
 ## Examples
 
- - [counter](http://jsbin.com/qawilefifa/1/edit?html,js,output)
+ - [counter](http://jsbin.com/qawilefifa/edit?html,js,output)
 
 ## Install
 
