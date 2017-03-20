@@ -100,3 +100,27 @@ it('once() - can respond a maximum of 1 time to an action', function () {
 
     expect(myMock.mock.calls.length).toEqual(1);
 });
+
+it('has a change feed based on a path', function () {
+    const myMock = jest.fn();
+
+    const initialState = {
+        user: {
+            name: "shane",
+            id: null
+        }
+    };
+
+    const store = createStore(initialState, function (state, action) {
+        return state.setIn(['user', 'id'], action.payload);
+    });
+
+    store.changes(['user'])
+        .subscribe(myMock);
+
+    store.dispatch({type: 'USER_ID', payload: '01'});
+
+    expect(myMock.mock.calls.length).toBe(1);
+    expect(myMock.mock.calls[0][0].toJS().id).toEqual('01');
+    expect(store.toJS().user.id).toEqual('01');
+});

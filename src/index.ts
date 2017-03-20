@@ -337,6 +337,12 @@ export function createStore(initialState, initialReducers, initialEffects, initi
             return actionsWithState$.filter(x => {
                 return lookup.indexOf(x.action.type) > -1;
             }).take(1);
+        },
+        changes: function (path) {
+            const lookup = alwaysArray(path);
+            return state$.map(x => x.getIn(lookup))
+                .distinctUntilChanged()
+                .skip(1);
         }
     };
 
@@ -355,7 +361,7 @@ export function createStore(initialState, initialReducers, initialEffects, initi
     }
 
     function isPlainObject(value) {
-        var objectTag = '[object Object]';
+        const objectTag = '[object Object]';
 
         return Object.prototype.toString.call(value) === objectTag;
     }
@@ -365,7 +371,7 @@ export function createStore(initialState, initialReducers, initialEffects, initi
     }
 
     return api;
-};
+}
 
 export default createStore;
 
