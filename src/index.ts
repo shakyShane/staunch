@@ -1,7 +1,6 @@
 import Rx = require('rx');
 import Immutable = require('immutable');
 
-const Observable = Rx.Observable;
 const BehaviorSubject = Rx.BehaviorSubject;
 const Subject = Rx.Subject;
 

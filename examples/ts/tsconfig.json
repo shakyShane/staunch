@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "jsx": "react",
+    "jsxFactory": "h",
+    "target": "es6",
+    "allowJs": true
+  },
+  "include": [
+    "typings/index.d.ts",
+    "types/custom.d.ts"
+  ]
+}

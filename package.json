@@ -3,8 +3,8 @@
   "version": "1.0.1",
   "description": "",
   "main": "dist/index.js",
-  "dependencies": {},
   "devDependencies": {
+    "browserify-shim": "3.8.13",
     "immutable": "^4.0.0-rc.1",
     "jest": "^19.0.2",
     "rx": "^4.1.0",
@@ -26,5 +26,14 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "browserify": {
+    "transform": [
+      "browserify-shim"
+    ]
+  },
+  "browserify-shim": {
+    "immutable": "global:Immutable",
+    "rx": "global:Rx"
+  }
 }
