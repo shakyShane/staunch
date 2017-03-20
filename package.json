@@ -17,7 +17,8 @@
     "uglify-js": "^2.8.14"
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "peerDependencies": {
     "immutable": "^4.0.0-rc.1",
