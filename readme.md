@@ -22,7 +22,9 @@ on top without issue :)
 
 ## Examples
 
- - [counter](http://jsbin.com/qawilefifa/edit?html,js,output)
+ - [simple counter](https://jsfiddle.net/vz4wod27/)
+ - [change feed](https://jsfiddle.net/5wgncryx/)
+ - [multiple reducers]()
 
 ## Install
 

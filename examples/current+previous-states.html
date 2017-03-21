@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1>Staunch example: multiple mapped reducers (like combineReducers)</h1>
+<script src="../node_modules/rx/dist/rx.all.js"></script>
+<script src="../node_modules/immutable/dist/immutable.js"></script>
+<script src="../node_modules/preact/dist/preact.js"></script>
+<script src="https://wzrd.in/standalone/hyperx"></script>
+<script src="../dist/browser.js"></script>
+<p>Previous state</p>
+<pre><code id="prev"></code></pre>
+<p>New state</p>
+<pre><code id="after"></code></pre>
+<script>
+
+    function userReducer (user, action) {
+        switch(action.type) {
+            case 'USER_NAME':
+                return user.set('name', action.payload);
+            default: return user;
+        }
+    }
+
+    function globalReducer (global, action) {
+        switch(action.type) {
+            case 'GLOBAL_AUTH':
+                return global.set('auth', action.payload);
+            default: return global;
+        }
+    }
+
+    const initial = {
+        user: {name: 'shane'},
+        global: {auth: false}
+    };
+
+    const store = staunch.createStore(initial, {
+        user: userReducer,
+        global: globalReducer
+    });
+
+    // dom elements for rendering
+    const prev  = document.querySelector('#prev');
+    const after = document.querySelector('#after');
+
+    store.changes()
+        .startWith(store.state$.getValue())
+        .pairwise()
+        .subscribe(x => {
+            prev.innerHTML = JSON.stringify(x[0], null, 2);
+            after.innerHTML = JSON.stringify(x[1], null, 2);
+        });
+
+    let count = 0;
+
+    store.dispatch({type: 'USER_NAME', payload: 'kittie ' + count});
+
+    setInterval(function () {
+        store.dispatch({type: 'USER_NAME', payload: 'kittie ' + count ++});
+    }, 1000);
+
+</script>
+
+</body>
+</html>

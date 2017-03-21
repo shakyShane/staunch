@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1>Staunch preact example:</h1>
+<script src="../node_modules/rx/dist/rx.all.js"></script>
+<script src="../node_modules/immutable/dist/immutable.js"></script>
+<script src="../node_modules/preact/dist/preact.js"></script>
+<script src="https://wzrd.in/standalone/hyperx"></script>
+<script src="../dist/browser.js"></script>
+<script>
+
+    const { h, Component } = preact;
+    const hx = hyperx( (tag, props, kids) => h(tag, props, ...kids) );
+
+    const App = () => hx`
+	<div id="app">
+		${h(Demo)}
+	</div>
+`;
+
+    class Demo extends Component {
+        constructor(props, context) {
+            super(props, context);
+            this.state = { n: 0 };
+            this.handleClick = () => {
+                this.setState({ n: this.state.n + 1 })
+            };
+        }
+        render(props, state) {
+            return hx`
+			<div>
+				<h1>clicked ${state.n} times</h1>
+				<button onClick=${this.handleClick}>click me!</button>
+			</div>
+		`;
+        }
+    }
+
+    preact.render(h(App), document.body);
+
+</script>
+</body>
+</html>

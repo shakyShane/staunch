@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1>Staunch example: multiple mapped reducers (like combineReducers)</h1>
+<script src="../node_modules/rx/dist/rx.all.js"></script>
+<script src="../node_modules/immutable/dist/immutable.js"></script>
+<script src="../node_modules/preact/dist/preact.js"></script>
+<script src="https://wzrd.in/standalone/hyperx"></script>
+<script src="../dist/browser.js"></script>
+<div style="display: flex">
+    <div>
+        <p>User state</p>
+        <pre><code id="userelem"></code></pre>
+    </div>
+    <div>
+        <p>This input </p>
+        <input type="text" value="shane" oninput="changeName(this.value)">
+    </div>
+</div>
+<div style="display: flex">
+    <div>
+        <p>Global State</p>
+        <pre><code id="globalelem"></code></pre>
+    </div>
+    <div>
+        <button type="button"></button>
+    </div>
+</div>
+<script>
+
+    // this handles the input change on
+    function toggleAuth (s) {
+        store.dispatch({type: 'GLOBAL_AUTH'});
+    }
+
+    // this handles the input change on
+    function changeName (s) {
+        store.dispatch({type: 'USER_NAME', payload: s});
+    }
+
+    // user reducer
+    function userReducer (user, action) {
+        switch(action.type) {
+            case 'USER_NAME':
+                return user.set('name', action.payload);
+            default: return user;
+        }
+    }
+
+    // global reducer
+    function globalReducer (global, action) {
+        switch(action.type) {
+            case 'GLOBAL_AUTH':
+                return global.update('auth', auth => !auth); // flip
+            default: return global;
+        }
+    }
+
+    const initial = {
+        user: {name: 'shane'},
+        global: {auth: false}
+    };
+
+    const store = staunch.createStore(initial, {
+        user: userReducer,
+        global: globalReducer
+    });
+
+    function shane () {
+        store.dispatch({type: 'USER_NAME', payload: 'kittie'});
+    }
+
+    // dom elements for rendering
+    const userElem  = document.querySelector('#userelem');
+    const globalElem = document.querySelector('#globalelem');
+
+
+    // create a stream of user state changes
+    store.changes('user')
+        .startWith(initial.user)
+        .subscribe(x => {
+            userElem.innerHTML = JSON.stringify(x, null, 2);
+        });
+
+    // create a stream of global state changes
+    store.changes('global')
+        .startWith(initial.global)
+        .subscribe(x => {
+            globalElem.innerHTML = JSON.stringify(x, null, 2);
+        });
+
+</script>
+
+</body>
+</html>

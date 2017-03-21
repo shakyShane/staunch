@@ -32,3 +32,12 @@ tasks:
         --source-map-url browser.min.js.map
         --in-source-map dist/browser.js.map
         --source-map dist/browser.min.js.map > dist/browser.min.js
+
+
+  examples: >
+    @npm browser-sync start
+    --server examples
+    --files examples
+    --ss .
+    --directory
+
