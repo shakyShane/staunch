@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h1>Staunch ajax example (2 second delay)</h1>
+<script src="../node_modules/rx/dist/rx.all.js"></script>
+<script src="../node_modules/immutable/dist/immutable.js"></script>
+<script src="../dist/staunch.js"></script>
+<div>
+    <button type="button" id="load">Load shakyshane (2 second delay)</button>
+</div>
+<div>
+    <pre><code id="debug"></code></pre></div>
+<script>
+
+const elem = document.querySelector('#debug');
+const button = document.querySelector('#load');
+
+const store = staunch.createStore();
+
+store.register({
+    state: {
+        user: {
+            loading: false,
+            result: null,
+            messages: []
+        }
+    },
+    reducers: {
+        user: function(state, action) {
+            if (action.type === 'USER_FETCH') {
+                return state
+                    .set('loading', true)
+                    .set('result', null) // clear any previous
+            }
+            if (action.type === 'USER_SUCCESS') {
+                return state
+                    .set('loading', false)
+                    .set('result', action.payload)
+            }
+            return state;
+        }
+    },
+    effects: function(action$) {
+        return action$.ofType('USER_FETCH')
+            .flatMap(({action, state}) =>
+                fetch('https://api.github.com/users/shakyshane').then(x => x.json())
+            )
+            .map(resp => {
+                return {
+                    type: 'USER_SUCCESS',
+                    payload: resp
+                }
+            })
+            .delay(2000)
+    }
+});
+
+store.changes(['user', 'loading'])
+    .do(x => console.log('setting', x))
+    .subscribe((loading) => {
+        button.disabled = loading;
+    });
+
+store.changes()
+    .map(x => JSON.stringify(x, null, 2))
+    .subscribe(string => elem.innerHTML = string);
+
+button.onclick = function() {
+    store.dispatch({type: 'USER_FETCH'});
+}
+
+</script>
+</body>
+</html>

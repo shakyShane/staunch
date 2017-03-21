@@ -24,8 +24,9 @@ on top without issue :)
 
  - [Simple counter](https://jsfiddle.net/v427t3bo/)
  - [Change feed](https://jsfiddle.net/5wgncryx/)
- - [Previous + Current State](https://jsfiddle.net/k5kyxvgc/)
+ - [Previous + Current State](https://jsfiddle.net/e35zznhr/2/)
  - [Multiple Reducers](https://jsfiddle.net/xhzps4z8/)
+ - [Ajax](https://jsfiddle.net/bvssgo6r/3/)
 
 ## Install
 
