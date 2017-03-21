@@ -312,8 +312,7 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         changes: function (path) {
             var lookup = alwaysArray(path);
             return state$.map(function (x) { return x.getIn(lookup); })
-                .distinctUntilChanged()
-                .skip(1);
+                .distinctUntilChanged();
         }
     };
     // add initial ones
@@ -347,4 +346,4 @@ if (window && ((typeof window.staunch) === 'undefined')) {
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
 },{}]},{},[1])
-//# sourceMappingURL=browser.js.map
+//# sourceMappingURL=staunch.js.map

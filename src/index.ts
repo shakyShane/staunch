@@ -340,8 +340,7 @@ export function createStore(initialState, initialReducers, initialEffects, initi
         changes: function (path) {
             const lookup = alwaysArray(path);
             return state$.map(x => x.getIn(lookup))
-                .distinctUntilChanged()
-                .skip(1);
+                .distinctUntilChanged();
         }
     };
 

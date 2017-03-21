@@ -27,7 +27,7 @@
     "rxjs": "^5.2.0"
   },
   "scripts": {
-    "test": "jest",
+    "test": "cb test",
     "prerelease": "cb test"
   },
   "keywords": [],

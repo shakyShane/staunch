@@ -120,7 +120,7 @@ it('has a change feed based on a path', function () {
 
     store.dispatch({type: 'USER_ID', payload: '01'});
 
-    expect(myMock.mock.calls.length).toBe(1);
-    expect(myMock.mock.calls[0][0].toJS().id).toEqual('01');
-    expect(store.toJS().user.id).toEqual('01');
+    expect(myMock.mock.calls.length).toBe(2);
+    expect(myMock.mock.calls[0][0].toJS().id).toEqual(null);
+    expect(myMock.mock.calls[1][0].toJS().id).toEqual('01');
 });

@@ -5,15 +5,13 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>Staunch example</title>
 </head>
 <body>
-<h1>Staunch example: multiple mapped reducers (like combineReducers)</h1>
+<h1>Staunch: Current + previous state</h1>
 <script src="../node_modules/rx/dist/rx.all.js"></script>
 <script src="../node_modules/immutable/dist/immutable.js"></script>
-<script src="../node_modules/preact/dist/preact.js"></script>
-<script src="https://wzrd.in/standalone/hyperx"></script>
-<script src="../dist/browser.js"></script>
+<script src="../dist/staunch.js"></script>
 <p>Previous state</p>
 <pre><code id="prev"></code></pre>
 <p>New state</p>
@@ -51,7 +49,6 @@
     const after = document.querySelector('#after');
 
     store.changes()
-        .startWith(store.state$.getValue())
         .pairwise()
         .subscribe(x => {
             prev.innerHTML = JSON.stringify(x[0], null, 2);

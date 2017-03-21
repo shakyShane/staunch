@@ -22,9 +22,9 @@ on top without issue :)
 
 ## Examples
 
- - [simple counter](https://jsfiddle.net/vz4wod27/)
+ - [simple counter](https://jsfiddle.net/v427t3bo/)
  - [change feed](https://jsfiddle.net/5wgncryx/)
- - [multiple reducers]()
+ - [previous + current state](https://jsfiddle.net/5wgncryx/)
 
 ## Install
 
