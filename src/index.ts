@@ -4,6 +4,11 @@ import Immutable = require('immutable');
 const BehaviorSubject = Rx.BehaviorSubject;
 const Subject = Rx.Subject;
 
+export enum ReducerTypes {
+    MappedReducer = <any>'MappedReducer',
+    GlobalReducer = <any>'GlobalReducer'
+};
+
 export function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
 
     const mergedInitialState = alwaysMap(initialState);
@@ -71,10 +76,30 @@ export function createStore(initialState, initialReducers, initialEffects, initi
                 return stateMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value))
 
             } else {
+
+                /**
+                 * Iterate through all valid reducers
+                 * This will include those registered via simple functions
+                 * + those mapped to a path with a specific Action name
+                 */
                 return reducers.reduce(function (outgoingValue, reducer) {
+
+                    /**
+                     * Decide whether to pass {type: NAME, payload: VALUE}
+                     *                   or   VALUE only into the reducer
+                     *
+                     */
+                    const reducerPayload = reducer.type === ReducerTypes.MappedReducer
+                        ? action.payload
+                        : action;
+
+                    /**
+                     * Now use updateIn to call this reducers functions (there could be many)
+                     * on the value that lives at this point of the tree
+                     */
                     return outgoingValue.updateIn(reducer.path, function (currentValue) {
                         return reducer.fns.reduce(function (value, fn) {
-                            return fn.call(null, value, action, outgoingValue);
+                            return fn.call(null, value, reducerPayload, outgoingValue);
                         }, currentValue)
                     });
                 }, stateMap);
@@ -190,7 +215,8 @@ export function createStore(initialState, initialReducers, initialEffects, initi
                         newMappedReducer$.onNext({
                             path: [].concat(reducer.path),
                             fns: [currentFn],
-                            name
+                            name,
+                            type: ReducerTypes.MappedReducer
                         });
                     });
                     return;

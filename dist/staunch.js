@@ -14,6 +14,12 @@ var Rx = (typeof window !== "undefined" ? window['Rx'] : typeof global !== "unde
 var Immutable = (typeof window !== "undefined" ? window['Immutable'] : typeof global !== "undefined" ? global['Immutable'] : null);
 var BehaviorSubject = Rx.BehaviorSubject;
 var Subject = Rx.Subject;
+var ReducerTypes;
+(function (ReducerTypes) {
+    ReducerTypes[ReducerTypes["MappedReducer"] = 'MappedReducer'] = "MappedReducer";
+    ReducerTypes[ReducerTypes["GlobalReducer"] = 'GlobalReducer'] = "GlobalReducer";
+})(ReducerTypes = exports.ReducerTypes || (exports.ReducerTypes = {}));
+;
 function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
     var mergedInitialState = alwaysMap(initialState);
     var state$ = new BehaviorSubject(mergedInitialState);
@@ -70,10 +76,27 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
             return stateMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value));
         }
         else {
+            /**
+             * Iterate through all valid reducers
+             * This will include those registered via simple functions
+             * + those mapped to a path with a specific Action name
+             */
             return reducers.reduce(function (outgoingValue, reducer) {
+                /**
+                 * Decide whether to pass {type: NAME, payload: VALUE}
+                 *                   or   VALUE only into the reducer
+                 *
+                 */
+                var reducerPayload = reducer.type === ReducerTypes.MappedReducer
+                    ? action.payload
+                    : action;
+                /**
+                 * Now use updateIn to call this reducers functions (there could be many)
+                 * on the value that lives at this point of the tree
+                 */
                 return outgoingValue.updateIn(reducer.path, function (currentValue) {
                     return reducer.fns.reduce(function (value, fn) {
-                        return fn.call(null, value, action, outgoingValue);
+                        return fn.call(null, value, reducerPayload, outgoingValue);
                     }, currentValue);
                 });
             }, stateMap);
@@ -179,7 +202,8 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
                         newMappedReducer$.onNext({
                             path: [].concat(reducer.path),
                             fns: [currentFn],
-                            name: name
+                            name: name,
+                            type: ReducerTypes.MappedReducer
                         });
                     });
                     return;
