@@ -4,12 +4,22 @@ import Immutable = require('immutable');
 const BehaviorSubject = Rx.BehaviorSubject;
 const Subject = Rx.Subject;
 
+export interface IAction {
+    type: string
+    payload?: any
+    via?: string
+}
+
 export enum ReducerTypes {
     MappedReducer = <any>'MappedReducer',
     GlobalReducer = <any>'GlobalReducer'
-};
+}
 
-export function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
+export function createStore(initialState: object,
+                            initialReducers,
+                            initialEffects,
+                            initialMiddleware,
+                            initialExtras) {
 
     const mergedInitialState = alwaysMap(initialState);
     const state$ = new BehaviorSubject(mergedInitialState);
@@ -18,7 +28,7 @@ export function createStore(initialState, initialReducers, initialEffects, initi
     const newExtras$ = new Subject();
     newExtras$.scan(function (extras, incoming) {
         return Object.assign({}, extras, incoming);
-    }, {}).share().subscribe(userExtra$);
+    }, {}).subscribe(userExtra$);
 
     // stream of actions
     const action$ = new Subject();
@@ -28,21 +38,21 @@ export function createStore(initialState, initialReducers, initialEffects, initi
     const newReducer$ = new Subject();
     newReducer$.scan(function (acc, incoming) {
         return acc.concat(incoming);
-    }, []).share().subscribe(storeReducers);
+    }, []).subscribe(storeReducers);
 
     // Mapped reducers
     const mappedReducers = new BehaviorSubject([]);
     const newMappedReducer$ = new Subject();
     newMappedReducer$.scan(function (acc, incoming) {
         return acc.concat(incoming);
-    }, []).share().subscribe(mappedReducers);
+    }, []).subscribe(mappedReducers);
 
     // responses
     const storeResponses = new BehaviorSubject([]);
     const newResponses = new Subject();
     newResponses.scan(function (acc, incoming) {
         return acc.concat(incoming);
-    }, []).share().subscribe(storeResponses);
+    }, []).subscribe(storeResponses);
 
     // stream
     const stateUpdate$ = action$

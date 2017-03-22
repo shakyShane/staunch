@@ -17,7 +17,6 @@ var ReducerTypes;
     ReducerTypes[ReducerTypes["MappedReducer"] = 'MappedReducer'] = "MappedReducer";
     ReducerTypes[ReducerTypes["GlobalReducer"] = 'GlobalReducer'] = "GlobalReducer";
 })(ReducerTypes = exports.ReducerTypes || (exports.ReducerTypes = {}));
-;
 function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
     var mergedInitialState = alwaysMap(initialState);
     var state$ = new BehaviorSubject(mergedInitialState);
@@ -25,7 +24,7 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     var newExtras$ = new Subject();
     newExtras$.scan(function (extras, incoming) {
         return Object.assign({}, extras, incoming);
-    }, {}).share().subscribe(userExtra$);
+    }, {}).subscribe(userExtra$);
     // stream of actions
     var action$ = new Subject();
     // reducers to act upon state
@@ -33,19 +32,19 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     var newReducer$ = new Subject();
     newReducer$.scan(function (acc, incoming) {
         return acc.concat(incoming);
-    }, []).share().subscribe(storeReducers);
+    }, []).subscribe(storeReducers);
     // Mapped reducers
     var mappedReducers = new BehaviorSubject([]);
     var newMappedReducer$ = new Subject();
     newMappedReducer$.scan(function (acc, incoming) {
         return acc.concat(incoming);
-    }, []).share().subscribe(mappedReducers);
+    }, []).subscribe(mappedReducers);
     // responses
     var storeResponses = new BehaviorSubject([]);
     var newResponses = new Subject();
     newResponses.scan(function (acc, incoming) {
         return acc.concat(incoming);
-    }, []).share().subscribe(storeResponses);
+    }, []).subscribe(storeResponses);
     // stream
     var stateUpdate$ = action$
         .do(function (action) {

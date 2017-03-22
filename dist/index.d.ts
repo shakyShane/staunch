@@ -1,8 +1,13 @@
+export interface IAction {
+    type: string;
+    payload?: any;
+    via?: string;
+}
 export declare enum ReducerTypes {
     MappedReducer,
     GlobalReducer,
 }
-export declare function createStore(initialState: any, initialReducers: any, initialEffects: any, initialMiddleware: any, initialExtras: any): {
+export declare function createStore(initialState: object, initialReducers: any, initialEffects: any, initialMiddleware: any, initialExtras: any): {
     state$: any;
     action$: any;
     actionsWithState$: any;
