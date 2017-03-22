@@ -82,8 +82,8 @@ describe('setup with single effect', function () {
                 {
                     path: ['user'],
                     reducers: {
-                        USER_ADD: function (user, action) {
-                            return user.set('auth', action.payload.auth);
+                        USER_ADD: function (user, payload) {
+                            return user.set('auth', payload.auth);
                         }
                     }
                 },

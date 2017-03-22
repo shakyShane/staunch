@@ -1,3 +1,7 @@
+export declare enum ReducerTypes {
+    MappedReducer,
+    GlobalReducer,
+}
 export declare function createStore(initialState: any, initialReducers: any, initialEffects: any, initialMiddleware: any, initialExtras: any): {
     state$: any;
     action$: any;
