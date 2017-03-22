@@ -41,5 +41,8 @@
   "browserify-shim": {
     "immutable": "global:Immutable",
     "rx": "global:Rx"
+  },
+  "jest": {
+    "testPathIgnorePatterns": ["dist"]
   }
 }

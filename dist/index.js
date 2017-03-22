@@ -287,14 +287,14 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         actionsWithResultingStateUpdate$: actionsWithState$,
         register: function (input) {
             var state = input.state, reducers = input.reducers, effects = input.effects, responses = input.responses;
+            if (state) {
+                _registerOnStateTree(state);
+            }
             if (reducers) {
                 _addReducers(reducers);
             }
             if (effects) {
                 _addEffects(effects);
-            }
-            if (state) {
-                _registerOnStateTree(state);
             }
             if (responses) {
                 _addResponses(responses);

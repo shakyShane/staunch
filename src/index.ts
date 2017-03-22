@@ -315,16 +315,16 @@ export function createStore(initialState, initialReducers, initialEffects, initi
         register: function (input) {
             const {state, reducers, effects, responses} = input;
 
+            if (state) {
+                _registerOnStateTree(state);
+            }
+
             if (reducers) {
                 _addReducers(reducers);
             }
 
             if (effects) {
                 _addEffects(effects);
-            }
-
-            if (state) {
-                _registerOnStateTree(state);
             }
 
             if (responses) {
