@@ -1,6 +1,7 @@
 import {alwaysArray} from "./index";
+import {InputTypes} from "./addReducers";
 
-export function addEffects(incoming, actionsWithState$, storeExtras, userExtra$, _dispatcher) {
+export function gatherEffects(incoming, actionsWithState$, storeExtras, userExtra$) {
 
     const actionsApi = {
         ofType: function (actionName) {
@@ -10,49 +11,44 @@ export function addEffects(incoming, actionsWithState$, storeExtras, userExtra$,
         }
     };
 
-    _addEffects(incoming)
+    const extras = Object.assign({}, storeExtras, userExtra$.getValue());
 
+    return alwaysArray(incoming).reduce(function (acc, effect) {
 
-    function _addEffects (effects) {
+        if (typeof effect !== 'function') {
+            console.error('Effects must be functions, you provided', effect);
+        }
 
-        const extras = Object.assign({}, storeExtras, userExtra$.getValue());
+        const stream = (function () {
 
-        alwaysArray(effects).forEach(function (effect) {
-
-            if (typeof effect !== 'function') {
-                console.error('Effects must be functions, you provided', effect);
+            if (effect.triggers && Array.isArray(effect.triggers)) {
+                return actionsWithState$.filter(function (incoming) {
+                    return ~effect.triggers.indexOf(incoming.action.type);
+                });
             }
 
-            const stream = (function () {
-
-                if (effect.triggers && Array.isArray(effect.triggers)) {
-                    return actionsWithState$.filter(function (incoming) {
-                        return ~effect.triggers.indexOf(incoming.action.type);
-                    });
-                }
-
-                if (effect.trigger && typeof effect.trigger === 'string') {
-                    return actionsWithState$.filter(function (incoming) {
-                        return effect.trigger === incoming.action.type;
-                    });
-                }
-
-                return actionsApi;
-            })();
-
-
-            effect.call(null, stream, extras)
-            // Make it clear where this action originated from
-                .map(action => {
-                    return {
-                        ...action,
-                        via: '[effect]',
-                        name: (effect.name || '')
-                    }
-                })
-                .forEach(function (action) {
-                    _dispatcher(action);
+            if (effect.trigger && typeof effect.trigger === 'string') {
+                return actionsWithState$.filter(function (incoming) {
+                    return effect.trigger === incoming.action.type;
                 });
+            }
+
+            return actionsApi;
+        })();
+
+        // todo, verify the output of this ie: ensure an observable
+        // was returned
+        const effectOutput = effect.call(null, stream, extras)
+
+        return acc.concat({
+            type: InputTypes.Effect,
+            payload: effectOutput.map(action => {
+                return {
+                    ...action,
+                    via: '[effect]',
+                    name: (effect.name || '')
+                }
+            })
         });
-    }
+    }, []);
 }

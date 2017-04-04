@@ -3,7 +3,8 @@ import Immutable = require('immutable');
 import {actionStream} from "./actions";
 import {handleResponses} from "./responses";
 import {gatherReducers, InputTypes} from "./addReducers";
-import {addEffects} from "./addEffects";
+import {gatherEffects} from "./addEffects";
+import {concatFn, newExtrasFn} from "./subjects";
 
 const BehaviorSubject = Rx.BehaviorSubject;
 const Subject = Rx.Subject;
@@ -26,46 +27,34 @@ export function createStore(initialState: object,
                             initialExtras) {
 
     const mergedInitialState = alwaysMap(initialState);
-
-    const state$     = new BehaviorSubject(mergedInitialState);
+    const state$             = new BehaviorSubject(mergedInitialState);
+    const subs = [];
 
     const userExtra$ = new BehaviorSubject({});
     const newExtras$ = new Subject();
-    newExtras$.scan(function (extras, incoming) {
-        return Object.assign({}, extras, incoming);
-    }, {}).subscribe(userExtra$);
+    subs.push(newExtras$.scan(newExtrasFn, {}).subscribe(userExtra$));
 
     // reducers to act upon state
     const storeReducers = new BehaviorSubject([]);
     const newReducer$ = new Subject();
-    newReducer$.scan(function (acc, incoming) {
-        return acc.concat(incoming);
-    }, []).subscribe(storeReducers);
+    subs.push(newReducer$.scan(concatFn, []).subscribe(storeReducers));
 
     // Mapped reducers
     const mappedReducers = new BehaviorSubject([]);
     const newMappedReducer$ = new Subject();
-    newMappedReducer$.scan(function (acc, incoming) {
-        return acc.concat(incoming);
-    }, []).subscribe(mappedReducers);
+    subs.push(newMappedReducer$.scan(concatFn, []).subscribe(mappedReducers));
 
     // responses
     const storeResponses = new BehaviorSubject([]);
     const newResponses = new Subject();
-    newResponses.scan(function (acc, incoming) {
-        return acc.concat(incoming);
-    }, []).subscribe(storeResponses);
+    subs.push(newResponses.scan(concatFn, []).subscribe(storeResponses));
 
     // stream of actions
     const action$ = new Subject();
 
     // stream
-    actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
-        .catch(function (err) {
-            // console.error(err);
-            return Rx.Observable.throw(err);
-        })
-        .subscribe(state$);
+    subs.push(actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
+        .subscribe(state$));
 
     /**
      * Create a stream that has updates + resulting state updates
@@ -80,8 +69,8 @@ export function createStore(initialState: object,
     /**
      * Setup responses for declarative cross-domain communication
      */
-    handleResponses(actionsWithState$, storeResponses)
-        .subscribe(action => _dispatcher(action));
+    subs.push(handleResponses(actionsWithState$, storeResponses)
+        .subscribe(action => _dispatcher(action)));
 
     /**
      * Default extras that get passed to all 'effects'
@@ -109,10 +98,6 @@ export function createStore(initialState: object,
         return action$.onNext(action);
     }
 
-
-    function _addEffects(incoming) {
-        addEffects(incoming, actionsWithState$, storeExtras, userExtra$, _dispatcher);
-    }
 
 
     function _addMiddleware(middleware) {
@@ -153,6 +138,15 @@ export function createStore(initialState: object,
         });
     }
 
+    function _addEffects(incoming) {
+        gatherEffects(incoming, actionsWithState$, storeExtras, userExtra$)
+            .forEach(outgoing => {
+                if (outgoing.type === InputTypes.Effect) {
+                    subs.push(outgoing.payload.subscribe(_dispatcher));
+                }
+            });
+    }
+
     function _addReducers(incoming) {
         gatherReducers(incoming)
             .forEach(outgoing => {
@@ -169,6 +163,7 @@ export function createStore(initialState: object,
     }
 
     const api = {
+        isOpen: true,
         state$: state$,
         action$: action$,
         actionsWithState$: actionsWithState$,
@@ -231,6 +226,13 @@ export function createStore(initialState: object,
         },
         addExtras: function(extras) {
             _addExtras(extras);
+            return api;
+        },
+        close: function() {
+            if (api.isOpen) {
+                subs.forEach(sub => sub.dispose());
+                api.isOpen = false;
+            }
             return api;
         }
     };

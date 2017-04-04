@@ -71,7 +71,8 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var index_1 = require("./index");
-function addEffects(incoming, actionsWithState$, storeExtras, userExtra$, _dispatcher) {
+var addReducers_1 = require("./addReducers");
+function gatherEffects(incoming, actionsWithState$, storeExtras, userExtra$) {
     var actionsApi = {
         ofType: function (actionName) {
             return actionsWithState$.filter(function (incoming) {
@@ -79,39 +80,38 @@ function addEffects(incoming, actionsWithState$, storeExtras, userExtra$, _dispa
             });
         }
     };
-    _addEffects(incoming);
-    function _addEffects(effects) {
-        var extras = Object.assign({}, storeExtras, userExtra$.getValue());
-        index_1.alwaysArray(effects).forEach(function (effect) {
-            if (typeof effect !== 'function') {
-                console.error('Effects must be functions, you provided', effect);
+    var extras = Object.assign({}, storeExtras, userExtra$.getValue());
+    return index_1.alwaysArray(incoming).reduce(function (acc, effect) {
+        if (typeof effect !== 'function') {
+            console.error('Effects must be functions, you provided', effect);
+        }
+        var stream = (function () {
+            if (effect.triggers && Array.isArray(effect.triggers)) {
+                return actionsWithState$.filter(function (incoming) {
+                    return ~effect.triggers.indexOf(incoming.action.type);
+                });
             }
-            var stream = (function () {
-                if (effect.triggers && Array.isArray(effect.triggers)) {
-                    return actionsWithState$.filter(function (incoming) {
-                        return ~effect.triggers.indexOf(incoming.action.type);
-                    });
-                }
-                if (effect.trigger && typeof effect.trigger === 'string') {
-                    return actionsWithState$.filter(function (incoming) {
-                        return effect.trigger === incoming.action.type;
-                    });
-                }
-                return actionsApi;
-            })();
-            effect.call(null, stream, extras)
-                .map(function (action) {
+            if (effect.trigger && typeof effect.trigger === 'string') {
+                return actionsWithState$.filter(function (incoming) {
+                    return effect.trigger === incoming.action.type;
+                });
+            }
+            return actionsApi;
+        })();
+        // todo, verify the output of this ie: ensure an observable
+        // was returned
+        var effectOutput = effect.call(null, stream, extras);
+        return acc.concat({
+            type: addReducers_1.InputTypes.Effect,
+            payload: effectOutput.map(function (action) {
                 return __assign({}, action, { via: '[effect]', name: (effect.name || '') });
             })
-                .forEach(function (action) {
-                _dispatcher(action);
-            });
         });
-    }
+    }, []);
 }
-exports.addEffects = addEffects;
+exports.gatherEffects = gatherEffects;
 
-},{"./index":4}],3:[function(require,module,exports){
+},{"./addReducers":3,"./index":4}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var index_1 = require("./index");
@@ -229,6 +229,7 @@ var actions_1 = require("./actions");
 var responses_1 = require("./responses");
 var addReducers_1 = require("./addReducers");
 var addEffects_1 = require("./addEffects");
+var subjects_1 = require("./subjects");
 var BehaviorSubject = Rx.BehaviorSubject;
 var Subject = Rx.Subject;
 var ReducerTypes;
@@ -239,38 +240,27 @@ var ReducerTypes;
 function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
     var mergedInitialState = alwaysMap(initialState);
     var state$ = new BehaviorSubject(mergedInitialState);
+    var subs = [];
     var userExtra$ = new BehaviorSubject({});
     var newExtras$ = new Subject();
-    newExtras$.scan(function (extras, incoming) {
-        return Object.assign({}, extras, incoming);
-    }, {}).subscribe(userExtra$);
+    subs.push(newExtras$.scan(subjects_1.newExtrasFn, {}).subscribe(userExtra$));
     // reducers to act upon state
     var storeReducers = new BehaviorSubject([]);
     var newReducer$ = new Subject();
-    newReducer$.scan(function (acc, incoming) {
-        return acc.concat(incoming);
-    }, []).subscribe(storeReducers);
+    subs.push(newReducer$.scan(subjects_1.concatFn, []).subscribe(storeReducers));
     // Mapped reducers
     var mappedReducers = new BehaviorSubject([]);
     var newMappedReducer$ = new Subject();
-    newMappedReducer$.scan(function (acc, incoming) {
-        return acc.concat(incoming);
-    }, []).subscribe(mappedReducers);
+    subs.push(newMappedReducer$.scan(subjects_1.concatFn, []).subscribe(mappedReducers));
     // responses
     var storeResponses = new BehaviorSubject([]);
     var newResponses = new Subject();
-    newResponses.scan(function (acc, incoming) {
-        return acc.concat(incoming);
-    }, []).subscribe(storeResponses);
+    subs.push(newResponses.scan(subjects_1.concatFn, []).subscribe(storeResponses));
     // stream of actions
     var action$ = new Subject();
     // stream
-    actions_1.actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
-        .catch(function (err) {
-        // console.error(err);
-        return Rx.Observable.throw(err);
-    })
-        .subscribe(state$);
+    subs.push(actions_1.actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
+        .subscribe(state$));
     /**
      * Create a stream that has updates + resulting state updates
      */
@@ -283,8 +273,8 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     /**
      * Setup responses for declarative cross-domain communication
      */
-    responses_1.handleResponses(actionsWithState$, storeResponses)
-        .subscribe(function (action) { return _dispatcher(action); });
+    subs.push(responses_1.handleResponses(actionsWithState$, storeResponses)
+        .subscribe(function (action) { return _dispatcher(action); }));
     /**
      * Default extras that get passed to all 'effects'
      */
@@ -307,9 +297,6 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
             });
         }
         return action$.onNext(action);
-    }
-    function _addEffects(incoming) {
-        addEffects_1.addEffects(incoming, actionsWithState$, storeExtras, userExtra$, _dispatcher);
     }
     function _addMiddleware(middleware) {
         alwaysArray(middleware).forEach(function (middleware) {
@@ -345,6 +332,14 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
             });
         });
     }
+    function _addEffects(incoming) {
+        addEffects_1.gatherEffects(incoming, actionsWithState$, storeExtras, userExtra$)
+            .forEach(function (outgoing) {
+            if (outgoing.type === addReducers_1.InputTypes.Effect) {
+                subs.push(outgoing.payload.subscribe(_dispatcher));
+            }
+        });
+    }
     function _addReducers(incoming) {
         addReducers_1.gatherReducers(incoming)
             .forEach(function (outgoing) {
@@ -360,6 +355,7 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         });
     }
     var api = {
+        isOpen: true,
         state$: state$,
         action$: action$,
         actionsWithState$: actionsWithState$,
@@ -418,6 +414,13 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         addExtras: function (extras) {
             _addExtras(extras);
             return api;
+        },
+        close: function () {
+            if (api.isOpen) {
+                subs.forEach(function (sub) { return sub.dispose(); });
+                api.isOpen = false;
+            }
+            return api;
         }
     };
     // add initial ones
@@ -454,7 +457,7 @@ if ((typeof window !== 'undefined') && ((typeof window.staunch) === 'undefined')
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./actions":1,"./addEffects":2,"./addReducers":3,"./responses":5}],5:[function(require,module,exports){
+},{"./actions":1,"./addEffects":2,"./addReducers":3,"./responses":5,"./subjects":6}],5:[function(require,module,exports){
 (function (global){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -490,5 +493,17 @@ exports.handleResponses = handleResponses;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./index":4}]},{},[4])
+},{"./index":4}],6:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function newExtrasFn(extras, incoming) {
+    return Object.assign({}, extras, incoming);
+}
+exports.newExtrasFn = newExtrasFn;
+function concatFn(acc, incoming) {
+    return acc.concat(incoming);
+}
+exports.concatFn = concatFn;
+
+},{}]},{},[4])
 //# sourceMappingURL=staunch.js.map

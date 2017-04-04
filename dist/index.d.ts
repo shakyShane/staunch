@@ -9,6 +9,7 @@ export declare enum ReducerTypes {
     GlobalReducer,
 }
 export declare function createStore(initialState: object, initialReducers: any, initialEffects: any, initialMiddleware: any, initialExtras: any): {
+    isOpen: boolean;
     state$: any;
     action$: any;
     actionsWithState$: any;
@@ -23,6 +24,7 @@ export declare function createStore(initialState: object, initialReducers: any, 
     once: (actions: any) => any;
     changes: (path: any) => any;
     addExtras: (extras: any) => any;
+    close: () => any;
 };
 export declare function alwaysArray(input: any): any[];
 export declare function getMap(incoming: any): Immutable.Map<{}, {}>;

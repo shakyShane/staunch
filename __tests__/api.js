@@ -128,4 +128,58 @@ describe('api', function() {
         assert.deepEqual(calls[0].toJS().id, null);
         assert.deepEqual(calls[1].toJS().id, '01');
     });
+
+    it('has a close method for disposing of internal subscriptions', function () {
+
+        var calls = [];
+
+        const initialState = {
+            user: {
+                name: "shane",
+                id: null
+            }
+        };
+
+        const store = createStore(initialState, function (state, action) {
+            return state.setIn(['user', 'id'], action.payload);
+        });
+
+        store.changes(['user'])
+            .subscribe(x => { calls.push(x) });
+
+        store.dispatch({type: 'USER_ID', payload: '01'});
+
+        store.close();
+
+        store.dispatch({type: 'USER_ID', payload: '100'});
+
+        assert.equal(store.toJS().user.id, '01');
+        assert.equal(store.isOpen, false);
+    });
+
+    it('has access to final state after store is closed', function () {
+
+        var calls = [];
+
+        const initialState = {
+            user: {
+                name: "shane",
+                id: null
+            }
+        };
+
+        const store = createStore(initialState, function (state, action) {
+            return state.setIn(['user', 'id'], action.payload);
+        });
+
+        store.changes(['user'])
+            .subscribe(x => { calls.push(x) });
+
+        store.dispatch({type: 'USER_ID', payload: '01'});
+
+        const output = store.close().toJS();
+
+        assert.equal(output.user.id, '01');
+        assert.equal(store.isOpen, false);
+    });
 })
