@@ -22,6 +22,7 @@ export declare function createStore(initialState: object, initialReducers: any, 
     addMiddleware: (middleware: any) => any;
     once: (actions: any) => any;
     changes: (path: any) => any;
+    addExtras: (extras: any) => any;
 };
 export declare function alwaysArray(input: any): any[];
 export declare function getMap(incoming: any): Immutable.Map<{}, {}>;

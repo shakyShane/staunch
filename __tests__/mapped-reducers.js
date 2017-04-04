@@ -36,7 +36,7 @@ it('Add reducer with direct action fn mapping', function () {
     });
 
     const result = store.dispatch({type: 'USER_ID', payload: '01'}).toJS();
-    expect(result.global.user.id).toEqual('01');
+    assert.equal(result.global.user.id, '01');
 });
 
 it('Add reducer with direct action -> fn mapping at register point', function () {
@@ -80,6 +80,6 @@ it('Add reducer with direct action -> fn mapping at register point', function ()
 
     const result = store.dispatch({type: 'USER_ID', payload: '01'}).toJS();
     // console.log(result);
-    expect(result.global.user.id).toEqual('01');
-    expect(result.user.id).toEqual('01');
+    assert.equal(result.global.user.id, '01');
+    assert.equal(result.user.id, '01');
 });

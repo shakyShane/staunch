@@ -1,9 +1,13 @@
 tasks:
+
+  unit:
+    - '@npm mocha __tests__'
+
   test:
     - '@sh rm -rf dist/**'
     - '@npm tsc'
     - browser
-    - '@npm jest'
+    - unit
 
   build:
     - test

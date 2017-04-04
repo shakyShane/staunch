@@ -1,10 +1,11 @@
 const { createStore } = require('../dist');
+const {assert} = require('chai');
 
 describe('supporting middleware', function () {
     // const spy = jest.spy();
     it('supports middleware at store creation', function () {
 
-        const myMock = jest.fn();
+        let calls = 0;
 
         const store = createStore({}, [], [], [
             function (store) {
@@ -15,7 +16,7 @@ describe('supporting middleware', function () {
                     .distinctUntilChanged(function (incoming) {
                         return incoming.state;
                     })
-                    .subscribe(myMock);
+                    .subscribe(x => calls++);
             }
         ]);
 
@@ -40,16 +41,16 @@ describe('supporting middleware', function () {
         store.dispatch({type: 'USER_CREATE', payload: {name: 'shane'}});
         store.dispatch({type: 'USER_CREATE', payload: {name: 'shane'}});
 
-        expect(myMock.mock.calls.length).toEqual(1);
+        assert.equal(calls, 1);
     });
     it('supports middleware at store creation via chaining', function () {
 
-        const myMock = jest.fn();
+        let calls = 0;
 
         const store = createStore()
             .addMiddleware([
                 function (store) {
-                    store.action$.subscribe(myMock);
+                    store.action$.subscribe(x => calls++);
                 }
             ]);
 
@@ -71,6 +72,6 @@ describe('supporting middleware', function () {
         });
 
         store.dispatch({type: 'USER_CREATE', payload: {name: 'shane'}});
-        expect(myMock.mock.calls.length).toEqual(2);
+        assert.equal(calls, 2);
     });
 });

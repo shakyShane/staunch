@@ -123,7 +123,18 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         });
     }
     function _addReducers(incoming) {
-        addReducers_1.addReducers(incoming, newReducer$, newMappedReducer$, _addEffects, _registerOnStateTree);
+        addReducers_1.gatherReducers(incoming)
+            .forEach(function (outgoing) {
+            if (outgoing.type === addReducers_1.InputTypes.Reducer) {
+                newReducer$.onNext(outgoing.payload);
+            }
+            if (outgoing.type === addReducers_1.InputTypes.MappedReducer) {
+                newMappedReducer$.onNext(outgoing.payload);
+            }
+            if (outgoing.type === addReducers_1.InputTypes.State) {
+                _registerOnStateTree(outgoing.payload);
+            }
+        });
     }
     var api = {
         state$: state$,
@@ -180,6 +191,10 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
             var lookup = alwaysArray(path);
             return state$.map(function (x) { return x.getIn(lookup); })
                 .distinctUntilChanged();
+        },
+        addExtras: function (extras) {
+            _addExtras(extras);
+            return api;
         }
     };
     // add initial ones

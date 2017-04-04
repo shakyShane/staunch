@@ -2,6 +2,16 @@
  * Add either plain functions or {path, fns} pairs
  * @param reducers
  * outputTypes:
+ *  - reducer
+ *  - mappedReducer
+ *  - effect
+ *  - state
  * @private
  */
-export declare function addReducers(incoming: any, newReducer$: any, newMappedReducer$: any, _addEffects: any, _registerOnStateTree: any): void;
+export declare enum InputTypes {
+    Reducer,
+    MappedReducer,
+    Effect,
+    State,
+}
+export declare function gatherReducers(incoming: any): any;

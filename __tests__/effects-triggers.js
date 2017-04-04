@@ -38,7 +38,7 @@ it('supports triggers property added to a function', function () {
         .toJS();
 
     // console.log(result);
-    expect(result.user.id).toEqual('01');
+    assert.equal(result.user.id, '01');
 });
 
 it('supports trigger property added to a function', function () {
@@ -77,5 +77,5 @@ it('supports trigger property added to a function', function () {
         .toJS();
 
     // console.log(result);
-    expect(result.user.id).toEqual('01');
+    assert.equal(result.user.id, '01');
 });

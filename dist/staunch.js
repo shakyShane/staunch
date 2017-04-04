@@ -118,73 +118,106 @@ var index_1 = require("./index");
 /**
  * Add either plain functions or {path, fns} pairs
  * @param reducers
+ * outputTypes:
+ *  - reducer
+ *  - mappedReducer
+ *  - effect
+ *  - state
  * @private
  */
-function addReducers(incoming, newReducer$, newMappedReducer$, _addEffects, _registerOnStateTree) {
-    _addReducers(incoming);
-    function _addReducers(reducers) {
-        index_1.alwaysArray(reducers).forEach(function (reducer) {
+var InputTypes;
+(function (InputTypes) {
+    InputTypes[InputTypes["Reducer"] = 'Reducer'] = "Reducer";
+    InputTypes[InputTypes["MappedReducer"] = 'MappedReducers'] = "MappedReducer";
+    InputTypes[InputTypes["Effect"] = 'Effect'] = "Effect";
+    InputTypes[InputTypes["State"] = 'State'] = "State";
+})(InputTypes = exports.InputTypes || (exports.InputTypes = {}));
+function gatherReducers(incoming) {
+    return _addReducers(incoming, []);
+    function _addReducers(reducers, initial) {
+        return index_1.alwaysArray(reducers).reduce(function (acc, reducer) {
             if (typeof reducer === 'function') {
-                return newReducer$.onNext({
-                    path: [],
-                    fns: [].concat(reducer).filter(Boolean)
+                return acc.concat({
+                    type: InputTypes.Reducer,
+                    payload: {
+                        path: [],
+                        fns: [reducer]
+                    }
                 });
             }
             if (index_1.isPlainObject(reducer)) {
                 if (reducer.state) {
+                    var reducers_1, state = void 0, effects = void 0;
                     if (reducer.reducers) {
                         /**
                          * if 'state' and 'reducers' key were found,
                          * we bind the reducers to that top-level state key
                          */
-                        Object.keys(reducer.state).forEach(function (stateKey) {
-                            _addReducers({ path: stateKey, fns: reducer.reducers });
-                        });
+                        reducers_1 = Object.keys(reducer.state).reduce(function (acc, stateKey) {
+                            return acc.concat(_addReducers({ path: stateKey, fns: reducer.reducers }, []));
+                        }, []);
                     }
                     if (reducer.effects) {
-                        _addEffects(reducer.effects);
+                        effects = reducer.effects;
                     }
                     /**
                      *
                      */
-                    _registerOnStateTree(reducer.state);
-                    return;
+                    state = reducer.state;
+                    return acc.concat(reducers_1, {
+                        type: InputTypes.Effect,
+                        payload: effects
+                    }, {
+                        type: InputTypes.State,
+                        payload: state
+                    });
                 }
                 if (reducer.path && reducer.reducers) {
-                    Object.keys(reducer.reducers).forEach(function (name) {
+                    var maps = Object.keys(reducer.reducers).reduce(function (acc, name) {
                         var currentFn = reducer.reducers[name];
-                        newMappedReducer$.onNext({
-                            path: [].concat(reducer.path),
-                            fns: [currentFn],
-                            name: name,
-                            type: index_1.ReducerTypes.MappedReducer
+                        return acc.concat({
+                            type: InputTypes.MappedReducer,
+                            payload: {
+                                path: [].concat(reducer.path),
+                                fns: [currentFn],
+                                name: name,
+                                type: index_1.ReducerTypes.MappedReducer
+                            }
                         });
-                    });
-                    return;
+                    }, []);
+                    return acc.concat(maps);
                 }
                 /**
                  * if path/fn pairs given
                  */
                 if (reducer.path && reducer.fns) {
-                    newReducer$.onNext({
-                        path: [].concat(reducer.path).filter(Boolean),
-                        fns: [].concat(reducer.fns).filter(Boolean)
-                    });
+                    return acc.concat({
+                        type: InputTypes.Reducer,
+                        payload: {
+                            path: [].concat(reducer.path).filter(Boolean),
+                            fns: [].concat(reducer.fns).filter(Boolean)
+                        }
+                    }, initial);
                 }
                 else {
                     // redux style key: fn pairs
-                    for (var key in reducer) {
-                        newReducer$.onNext({
-                            path: [].concat(key).filter(Boolean),
-                            fns: [].concat(reducer[key]).filter(Boolean)
+                    var outgoing = Object.keys(reducer).reduce(function (acc, key) {
+                        return acc.concat({
+                            type: InputTypes.Reducer,
+                            payload: {
+                                path: [].concat(key).filter(Boolean),
+                                fns: [].concat(reducer[key]).filter(Boolean)
+                            }
                         });
-                    }
+                    }, []);
+                    return acc.concat(outgoing);
                 }
             }
-        });
+            return acc;
+        }, initial);
     }
 }
-exports.addReducers = addReducers;
+exports.gatherReducers = gatherReducers;
 
 },{"./index":4}],4:[function(require,module,exports){
 (function (global){
@@ -313,7 +346,18 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         });
     }
     function _addReducers(incoming) {
-        addReducers_1.addReducers(incoming, newReducer$, newMappedReducer$, _addEffects, _registerOnStateTree);
+        addReducers_1.gatherReducers(incoming)
+            .forEach(function (outgoing) {
+            if (outgoing.type === addReducers_1.InputTypes.Reducer) {
+                newReducer$.onNext(outgoing.payload);
+            }
+            if (outgoing.type === addReducers_1.InputTypes.MappedReducer) {
+                newMappedReducer$.onNext(outgoing.payload);
+            }
+            if (outgoing.type === addReducers_1.InputTypes.State) {
+                _registerOnStateTree(outgoing.payload);
+            }
+        });
     }
     var api = {
         state$: state$,
@@ -370,6 +414,10 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
             var lookup = alwaysArray(path);
             return state$.map(function (x) { return x.getIn(lookup); })
                 .distinctUntilChanged();
+        },
+        addExtras: function (extras) {
+            _addExtras(extras);
+            return api;
         }
     };
     // add initial ones

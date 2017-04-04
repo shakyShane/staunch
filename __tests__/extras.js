@@ -43,5 +43,5 @@ it('allows user-provided extras', function () {
         .getState()
         .toJS();
 
-    expect(result.user.id).toEqual('/branches/finder/');
+    assert.equal(result.user.id, '/branches/finder/');
 });

@@ -42,7 +42,7 @@ it('Action fires from a string only', function () {
         .getState()
         .toJS();
 
-    expect(result.user.id).toEqual('01');
+    assert.equal(result.user.id, '01');
 });
 
 
@@ -140,5 +140,5 @@ it('registers state tree entry (for init) without any reducers (register)', func
 
     const result = store.toJS();
 
-    expect(result.browser.support.mouse).toEqual(true);
+    assert.equal(result.browser.support.mouse, true);
 });

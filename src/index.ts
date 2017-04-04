@@ -2,7 +2,7 @@ import Rx = require('rx');
 import Immutable = require('immutable');
 import {actionStream} from "./actions";
 import {handleResponses} from "./responses";
-import {addReducers} from "./addReducers";
+import {gatherReducers, InputTypes} from "./addReducers";
 import {addEffects} from "./addEffects";
 
 const BehaviorSubject = Rx.BehaviorSubject;
@@ -154,7 +154,18 @@ export function createStore(initialState: object,
     }
 
     function _addReducers(incoming) {
-        addReducers(incoming, newReducer$, newMappedReducer$, _addEffects, _registerOnStateTree);
+        gatherReducers(incoming)
+            .forEach(outgoing => {
+                if (outgoing.type === InputTypes.Reducer) {
+                    newReducer$.onNext(outgoing.payload);
+                }
+                if (outgoing.type === InputTypes.MappedReducer) {
+                    newMappedReducer$.onNext(outgoing.payload);
+                }
+                if (outgoing.type === InputTypes.State) {
+                    _registerOnStateTree(outgoing.payload);
+                }
+            })
     }
 
     const api = {
@@ -217,6 +228,10 @@ export function createStore(initialState: object,
             const lookup = alwaysArray(path);
             return state$.map(x => x.getIn(lookup))
                 .distinctUntilChanged();
+        },
+        addExtras: function(extras) {
+            _addExtras(extras);
+            return api;
         }
     };
 

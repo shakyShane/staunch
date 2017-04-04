@@ -1,4 +1,5 @@
 const { createStore } = require('../dist');
+const { assert } = require('chai');
 const Immutable   = require('immutable');
 const Rx          = require('rx');
 const {fromJS}    = Immutable;
@@ -62,7 +63,7 @@ describe('setup with single effect', function () {
         }, singleEffect);
 
         store.dispatch({type: 'GLOBAL_AUTH', payload: true});
-        expect(store.toJS().user.name).toEqual('shane');
+        assert.equal(store.toJS().user.name, 'shane');
     });
 
     it('Adding auto mapping', function () {
@@ -107,7 +108,7 @@ describe('setup with single effect', function () {
         });
 
         const result = store.dispatch({type: 'GLOBAL_AUTH', payload: true}).toJS();
-        expect(result.user.auth).toEqual(true);
-        expect(result.global.auth).toEqual(true);
+        assert.equal(result.user.auth, true);
+        assert.equal(result.global.auth, true);
     });
 });
