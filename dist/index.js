@@ -1,15 +1,11 @@
 "use strict";
-var __assign = (this && this.__assign) || Object.assign || function(t) {
-    for (var s, i = 1, n = arguments.length; i < n; i++) {
-        s = arguments[i];
-        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-            t[p] = s[p];
-    }
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 var Rx = require("rx");
 var Immutable = require("immutable");
+var actions_1 = require("./actions");
+var responses_1 = require("./responses");
+var addReducers_1 = require("./addReducers");
+var addEffects_1 = require("./addEffects");
 var BehaviorSubject = Rx.BehaviorSubject;
 var Subject = Rx.Subject;
 var ReducerTypes;
@@ -25,8 +21,6 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     newExtras$.scan(function (extras, incoming) {
         return Object.assign({}, extras, incoming);
     }, {}).subscribe(userExtra$);
-    // stream of actions
-    var action$ = new Subject();
     // reducers to act upon state
     var storeReducers = new BehaviorSubject([]);
     var newReducer$ = new Subject();
@@ -45,62 +39,10 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     newResponses.scan(function (acc, incoming) {
         return acc.concat(incoming);
     }, []).subscribe(storeResponses);
+    // stream of actions
+    var action$ = new Subject();
     // stream
-    var stateUpdate$ = action$
-        .do(function (action) {
-        if (!isPlainObject(action)) {
-            return console.error('Please provide an object with at least a `type` property');
-        }
-        if ((typeof action.type) !== 'string') {
-            return console.error('Action was missing a `type` property', action);
-        }
-    })
-        .withLatestFrom(storeReducers, mappedReducers, function (action, reducers, mappedReducers) {
-        var mappedReducersThatMatchAction = mappedReducers
-            .filter(function (reducer) {
-            return reducer.name === action.type;
-        });
-        return {
-            action: action,
-            reducers: mappedReducersThatMatchAction.concat(reducers),
-        };
-    })
-        .scan(function (stateMap, _a) {
-        var action = _a.action, reducers = _a.reducers;
-        var actionType = action.type || (typeof action === 'string' ? action : '');
-        // is it a @@namespace ?
-        if (actionType.indexOf('@@NS-INIT') === 0) {
-            return stateMap.setIn(action.payload.path, alwaysMap((action.payload || {}).value));
-        }
-        else {
-            /**
-             * Iterate through all valid reducers
-             * This will include those registered via simple functions
-             * + those mapped to a path with a specific Action name
-             */
-            return reducers.reduce(function (outgoingValue, reducer) {
-                /**
-                 * Decide whether to pass {type: NAME, payload: VALUE}
-                 *                   or   VALUE only into the reducer
-                 *
-                 */
-                var reducerPayload = reducer.type === ReducerTypes.MappedReducer
-                    ? action.payload
-                    : action;
-                /**
-                 * Now use updateIn to call this reducers functions (there could be many)
-                 * on the value that lives at this point of the tree
-                 */
-                return outgoingValue.updateIn(reducer.path, function (currentValue) {
-                    return reducer.fns.reduce(function (value, fn) {
-                        return fn.call(null, value, reducerPayload, outgoingValue);
-                    }, currentValue);
-                });
-            }, stateMap);
-        }
-    }, mergedInitialState).share();
-    // Push all state updates back onto state$ value
-    stateUpdate$
+    actions_1.actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
         .catch(function (err) {
         // console.error(err);
         return Rx.Observable.throw(err);
@@ -115,37 +57,20 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
             state: state
         };
     });
+    /**
+     * Setup responses for declarative cross-domain communication
+     */
+    responses_1.handleResponses(actionsWithState$, storeResponses)
+        .subscribe(function (action) { return _dispatcher(action); });
+    /**
+     * Default extras that get passed to all 'effects'
+     */
     var storeExtras = {
         state$: state$,
         action$: action$,
         actionsWithState$: actionsWithState$,
         actionsWithResultingStateUpdate$: actionsWithState$
     };
-    /**
-     * Setup responses for declarative cross-domain communication
-     */
-    actionsWithState$
-        .withLatestFrom(storeResponses)
-        .filter(function (_a) {
-        var _ = _a[0], storeResponses = _a[1];
-        return storeResponses.length > 0;
-    })
-        .flatMap(function (incoming) {
-        var _a = incoming[0], action = _a.action, state = _a.state;
-        var storeResponses = incoming[1];
-        var actionName = action.type;
-        var matchingResponses = storeResponses
-            .filter(function (response) { return response.name === actionName; });
-        var newActions = matchingResponses.map(function (x) {
-            return {
-                type: x.targetName,
-                payload: state.getIn(x.path, getMap({})).toJS(),
-                via: "[response to (" + actionName + ")]"
-            };
-        });
-        return Rx.Observable.from(newActions);
-    })
-        .subscribe(function (action) { return _dispatcher(action); });
     /**
      * Dispatch 1 or many actions
      * @param action
@@ -160,106 +85,8 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         }
         return action$.onNext(action);
     }
-    /**
-     * Add either plain functions or {path, fns} pairs
-     * @param reducers
-     * @private
-     */
-    function _addReducers(reducers) {
-        alwaysArray(reducers).forEach(function (reducer) {
-            if (typeof reducer === 'function') {
-                newReducer$.onNext({
-                    path: [],
-                    fns: [].concat(reducer).filter(Boolean)
-                });
-            }
-            if (isPlainObject(reducer)) {
-                if (reducer.state) {
-                    if (reducer.reducers) {
-                        /**
-                         * if 'state' and 'reducers' key were found,
-                         * we bind the reducers to that top-level state key
-                         */
-                        Object.keys(reducer.state).forEach(function (stateKey) {
-                            _addReducers({ path: stateKey, fns: reducer.reducers });
-                        });
-                    }
-                    if (reducer.effects) {
-                        _addEffects(reducer.effects);
-                    }
-                    /**
-                     *
-                     */
-                    _registerOnStateTree(reducer.state);
-                    return;
-                }
-                if (reducer.path && reducer.reducers) {
-                    Object.keys(reducer.reducers).forEach(function (name) {
-                        var currentFn = reducer.reducers[name];
-                        newMappedReducer$.onNext({
-                            path: [].concat(reducer.path),
-                            fns: [currentFn],
-                            name: name,
-                            type: ReducerTypes.MappedReducer
-                        });
-                    });
-                    return;
-                }
-                /**
-                 * if path/fn pairs given
-                 */
-                if (reducer.path && reducer.fns) {
-                    newReducer$.onNext({
-                        path: [].concat(reducer.path).filter(Boolean),
-                        fns: [].concat(reducer.fns).filter(Boolean)
-                    });
-                }
-                else {
-                    // redux style key: fn pairs
-                    for (var key in reducer) {
-                        newReducer$.onNext({
-                            path: [].concat(key).filter(Boolean),
-                            fns: [].concat(reducer[key]).filter(Boolean)
-                        });
-                    }
-                }
-            }
-        });
-    }
-    function _addEffects(effects) {
-        var actionsApi = {
-            ofType: function (actionName) {
-                return actionsWithState$.filter(function (incoming) {
-                    return incoming.action.type === actionName;
-                });
-            }
-        };
-        var extras = Object.assign({}, storeExtras, userExtra$.getValue());
-        alwaysArray(effects).forEach(function (effect) {
-            if (typeof effect !== 'function') {
-                console.error('Effects must be functions, you provided', effect);
-            }
-            var stream = (function () {
-                if (effect.triggers && Array.isArray(effect.triggers)) {
-                    return actionsWithState$.filter(function (incoming) {
-                        return ~effect.triggers.indexOf(incoming.action.type);
-                    });
-                }
-                if (effect.trigger && typeof effect.trigger === 'string') {
-                    return actionsWithState$.filter(function (incoming) {
-                        return effect.trigger === incoming.action.type;
-                    });
-                }
-                return actionsApi;
-            })();
-            effect.call(null, stream, extras)
-                .map(function (action) {
-                return __assign({}, action, { via: '[effect]', name: (effect.name || '') });
-            })
-                .forEach(function (action) {
-                _dispatcher(action);
-            });
-        });
+    function _addEffects(incoming) {
+        addEffects_1.addEffects(incoming, actionsWithState$, storeExtras, userExtra$, _dispatcher);
     }
     function _addMiddleware(middleware) {
         alwaysArray(middleware).forEach(function (middleware) {
@@ -294,6 +121,9 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
                 });
             });
         });
+    }
+    function _addReducers(incoming) {
+        addReducers_1.addReducers(incoming, newReducer$, newMappedReducer$, _addEffects, _registerOnStateTree);
     }
     var api = {
         state$: state$,
@@ -357,24 +187,28 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     _addEffects(initialEffects);
     _addMiddleware(initialMiddleware);
     _addExtras(initialExtras);
-    function alwaysMap(input) {
-        return Immutable.Map.isMap(input) ? input : Immutable.fromJS(input || {});
-    }
-    function alwaysArray(input) {
-        return [].concat(input).filter(Boolean);
-    }
-    function isPlainObject(value) {
-        var objectTag = '[object Object]';
-        return Object.prototype.toString.call(value) === objectTag;
-    }
-    function getMap(incoming) {
-        return Immutable.Map(incoming);
-    }
     return api;
 }
 exports.createStore = createStore;
+function alwaysArray(input) {
+    return [].concat(input).filter(Boolean);
+}
+exports.alwaysArray = alwaysArray;
+function getMap(incoming) {
+    return Immutable.Map(incoming);
+}
+exports.getMap = getMap;
+function alwaysMap(input) {
+    return Immutable.Map.isMap(input) ? input : Immutable.fromJS(input || {});
+}
+exports.alwaysMap = alwaysMap;
+function isPlainObject(value) {
+    var objectTag = '[object Object]';
+    return Object.prototype.toString.call(value) === objectTag;
+}
+exports.isPlainObject = isPlainObject;
 exports.default = createStore;
-if (window && ((typeof window.staunch) === 'undefined')) {
+if ((typeof window !== 'undefined') && ((typeof window.staunch) === 'undefined')) {
     window.staunch = {
         createStore: createStore
     };

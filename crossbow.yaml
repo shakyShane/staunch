@@ -1,8 +1,12 @@
 tasks:
   test:
+    - '@sh rm -rf dist/**'
     - '@npm tsc'
     - browser
     - '@npm jest'
+
+  build:
+    - test
 
   commit:
     - test
