@@ -4,16 +4,10 @@ import {actionStream} from "./actions";
 import {handleResponses} from "./responses";
 import {gatherReducers, InputTypes} from "./addReducers";
 import {gatherEffects} from "./addEffects";
-import {concatFn, newExtrasFn} from "./subjects";
+import {concatFn, assignFn} from "./subjects";
 
 const BehaviorSubject = Rx.BehaviorSubject;
 const Subject = Rx.Subject;
-
-export interface IAction {
-    type: string
-    payload?: any
-    via?: string
-}
 
 export enum ReducerTypes {
     MappedReducer = <any>'MappedReducer',
@@ -32,7 +26,7 @@ export function createStore(initialState: object,
 
     const userExtra$ = new BehaviorSubject({});
     const newExtras$ = new Subject();
-    subs.push(newExtras$.scan(newExtrasFn, {}).subscribe(userExtra$));
+    subs.push(newExtras$.scan(assignFn, {}).subscribe(userExtra$));
 
     // reducers to act upon state
     const storeReducers = new BehaviorSubject([]);

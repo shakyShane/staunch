@@ -1,9 +1,4 @@
 import Immutable = require('immutable');
-export interface IAction {
-    type: string;
-    payload?: any;
-    via?: string;
-}
 export declare enum ReducerTypes {
     MappedReducer,
     GlobalReducer,

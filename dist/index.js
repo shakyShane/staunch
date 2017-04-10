@@ -20,7 +20,7 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     var subs = [];
     var userExtra$ = new BehaviorSubject({});
     var newExtras$ = new Subject();
-    subs.push(newExtras$.scan(subjects_1.newExtrasFn, {}).subscribe(userExtra$));
+    subs.push(newExtras$.scan(subjects_1.assignFn, {}).subscribe(userExtra$));
     // reducers to act upon state
     var storeReducers = new BehaviorSubject([]);
     var newReducer$ = new Subject();

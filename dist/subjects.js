@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-function newExtrasFn(extras, incoming) {
+function assignFn(extras, incoming) {
     return Object.assign({}, extras, incoming);
 }
-exports.newExtrasFn = newExtrasFn;
+exports.assignFn = assignFn;
 function concatFn(acc, incoming) {
     return acc.concat(incoming);
 }

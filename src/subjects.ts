@@ -1,4 +1,4 @@
-export function newExtrasFn(extras, incoming) {
+export function assignFn(extras, incoming) {
     return Object.assign({}, extras, incoming);
 }
 
