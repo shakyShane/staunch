@@ -1,234 +1,57 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Rx = require("rx");
-var Immutable = require("immutable");
-var actions_1 = require("./actions");
-var responses_1 = require("./responses");
-var addReducers_1 = require("./addReducers");
-var addEffects_1 = require("./addEffects");
-var subjects_1 = require("./subjects");
-var BehaviorSubject = Rx.BehaviorSubject;
-var Subject = Rx.Subject;
-var ReducerTypes;
-(function (ReducerTypes) {
-    ReducerTypes[ReducerTypes["MappedReducer"] = 'MappedReducer'] = "MappedReducer";
-    ReducerTypes[ReducerTypes["GlobalReducer"] = 'GlobalReducer'] = "GlobalReducer";
-})(ReducerTypes = exports.ReducerTypes || (exports.ReducerTypes = {}));
-function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
-    var mergedInitialState = alwaysMap(initialState);
-    var state$ = new BehaviorSubject(mergedInitialState);
-    var subs = [];
-    var userExtra$ = new BehaviorSubject({});
-    var newExtras$ = new Subject();
-    subs.push(newExtras$.scan(subjects_1.assignFn, {}).subscribe(userExtra$));
-    // reducers to act upon state
-    var storeReducers = new BehaviorSubject([]);
-    var newReducer$ = new Subject();
-    subs.push(newReducer$.scan(subjects_1.concatFn, []).subscribe(storeReducers));
-    // Mapped reducers
-    var mappedReducers = new BehaviorSubject([]);
-    var newMappedReducer$ = new Subject();
-    subs.push(newMappedReducer$.scan(subjects_1.concatFn, []).subscribe(mappedReducers));
-    // responses
-    var storeResponses = new BehaviorSubject([]);
-    var newResponses = new Subject();
-    subs.push(newResponses.scan(subjects_1.concatFn, []).subscribe(storeResponses));
-    // stream of actions
-    var action$ = new Subject();
-    // stream
-    subs.push(actions_1.actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
-        .subscribe(state$));
-    /**
-     * Create a stream that has updates + resulting state updates
-     */
-    var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) {
+function createStore() {
+    var actors = {};
+    var api = {};
+    var initialState = {};
+    var state$ = new Rx.BehaviorSubject({});
+    var actions = new Rx.Subject();
+    var stateUpdates = actions.scan(function (acc, item) {
+        return item.call(null, acc);
+    }, {}).subscribe(state$);
+    api.register = function (obj) {
+        actors[obj.name] = obj;
+        actions.onNext(function initModule(state) {
+            return Object.assign({}, state, (_a = {}, _a[obj.name] = obj.state || {}, _a));
+            var _a;
+        });
+        return api;
+    };
+    api.actors = actors;
+    api.send = function (sendName, payload) {
+        var _a = sendName.split('.'), name = _a[0], _method = _a[1];
+        var method = getMethod(name, _method, actors);
         return {
-            action: action,
-            state: state
+            receive: function (receiveName) {
+                var _a = receiveName.split('.'), name = _a[0], _method = _a[1];
+                var method = getMethod(name, _method, actors);
+                console.log(name, _method);
+            }
         };
-    });
-    /**
-     * Setup responses for declarative cross-domain communication
-     */
-    subs.push(responses_1.handleResponses(actionsWithState$, storeResponses)
-        .subscribe(function (action) { return _dispatcher(action); }));
-    /**
-     * Default extras that get passed to all 'effects'
-     */
-    var storeExtras = {
-        state$: state$,
-        action$: action$,
-        actionsWithState$: actionsWithState$,
-        actionsWithResultingStateUpdate$: actionsWithState$
     };
-    /**
-     * Dispatch 1 or many actions
-     * @param action
-     * @returns {*}
-     * @private
-     */
-    function _dispatcher(action) {
-        if (Array.isArray(action)) {
-            return action.forEach(function (a) {
-                action$.onNext(a);
-            });
-        }
-        return action$.onNext(action);
-    }
-    function _addMiddleware(middleware) {
-        alwaysArray(middleware).forEach(function (middleware) {
-            middleware.call(null, api);
-        });
-    }
-    function _addExtras(extras) {
-        alwaysArray(extras).forEach(function (extra) {
-            newExtras$.onNext(extra);
-        });
-    }
-    function _registerOnStateTree(state) {
-        for (var key in state) {
-            // now init with action
-            _dispatcher({
-                type: '@@NS-INIT(' + key + ')',
-                payload: {
-                    path: [key],
-                    value: state[key]
-                }
-            });
-        }
-    }
-    function _addResponses(responses) {
-        alwaysArray(responses).forEach(function (resp) {
-            Object.keys(resp).forEach(function (actionName) {
-                var item = resp[actionName];
-                newResponses.onNext({
-                    name: actionName,
-                    path: [].concat(item.path).filter(Boolean),
-                    targetName: item.action
-                });
-            });
-        });
-    }
-    function _addEffects(incoming) {
-        addEffects_1.gatherEffects(incoming, actionsWithState$, storeExtras, userExtra$)
-            .forEach(function (outgoing) {
-            if (outgoing.type === addReducers_1.InputTypes.Effect) {
-                subs.push(outgoing.payload.subscribe(_dispatcher));
-            }
-        });
-    }
-    function _addReducers(incoming) {
-        addReducers_1.gatherReducers(incoming)
-            .forEach(function (outgoing) {
-            if (outgoing.type === addReducers_1.InputTypes.Reducer) {
-                newReducer$.onNext(outgoing.payload);
-            }
-            if (outgoing.type === addReducers_1.InputTypes.MappedReducer) {
-                newMappedReducer$.onNext(outgoing.payload);
-            }
-            if (outgoing.type === addReducers_1.InputTypes.State) {
-                _registerOnStateTree(outgoing.payload);
-            }
-        });
-    }
-    var api = {
-        isOpen: true,
-        state$: state$,
-        action$: action$,
-        actionsWithState$: actionsWithState$,
-        actionsWithResultingStateUpdate$: actionsWithState$,
-        register: function (input) {
-            var state = input.state, reducers = input.reducers, effects = input.effects, responses = input.responses;
-            if (state) {
-                _registerOnStateTree(state);
-            }
-            if (reducers) {
-                _addReducers(reducers);
-            }
-            if (effects) {
-                _addEffects(effects);
-            }
-            if (responses) {
-                _addResponses(responses);
-            }
-            return api;
-        },
-        addReducers: function (reducers) {
-            _addReducers(reducers);
-            return api;
-        },
-        dispatch: function (action) {
-            _dispatcher(action);
-            return api;
-        },
-        getState: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.getValue().getIn(lookup, getMap({}));
-        },
-        toJS: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.getValue().getIn(lookup, getMap({})).toJS();
-        },
-        toJSON: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.getValue().getIn(lookup, getMap({})).toJSON();
-        },
-        addMiddleware: function (middleware) {
-            _addMiddleware(middleware);
-            return api;
-        },
-        once: function (actions) {
-            var lookup = alwaysArray(actions);
-            return actionsWithState$.filter(function (x) {
-                return lookup.indexOf(x.action.type) > -1;
-            }).take(1);
-        },
-        changes: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.map(function (x) { return x.getIn(lookup); })
-                .distinctUntilChanged();
-        },
-        addExtras: function (extras) {
-            _addExtras(extras);
-            return api;
-        },
-        close: function () {
-            if (api.isOpen) {
-                subs.forEach(function (sub) { return sub.dispose(); });
-                api.isOpen = false;
-            }
-            return api;
-        }
+    api.addresses = function () {
+        return getAddresses(actors);
     };
-    // add initial ones
-    _addReducers(initialReducers);
-    _addEffects(initialEffects);
-    _addMiddleware(initialMiddleware);
-    _addExtras(initialExtras);
     return api;
 }
 exports.createStore = createStore;
-function alwaysArray(input) {
-    return [].concat(input).filter(Boolean);
+function getAddresses(actors) {
+    return Object.keys(actors).reduce(function (acc, item) {
+        var current = actors[item];
+        var methods = Object.keys(current['methods'] || {});
+        var effects = Object.keys(current['effects'] || {});
+        return acc.concat(methods.concat(effects).map(function (x) { return item + "." + x; }));
+    }, []);
 }
-exports.alwaysArray = alwaysArray;
-function getMap(incoming) {
-    return Immutable.Map(incoming);
+function getMethod(name, method, actors) {
+    if (actors[name] && actors[name]['methods'][method]) {
+        return actors[name]['methods'][method];
+    }
 }
-exports.getMap = getMap;
-function alwaysMap(input) {
-    return Immutable.Map.isMap(input) ? input : Immutable.fromJS(input || {});
-}
-exports.alwaysMap = alwaysMap;
-function isPlainObject(value) {
-    var objectTag = '[object Object]';
-    return Object.prototype.toString.call(value) === objectTag;
-}
-exports.isPlainObject = isPlainObject;
-exports.default = createStore;
-if ((typeof window !== 'undefined') && ((typeof window.staunch) === 'undefined')) {
-    window.staunch = {
-        createStore: createStore
-    };
+function getReducer(name, method, actors) {
+    if (actors[name] && actors[name]['reducers'][method]) {
+        return actors[name]['reducers'][method];
+    }
 }
 //# sourceMappingURL=index.js.map
