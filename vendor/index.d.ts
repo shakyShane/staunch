@@ -1,3 +1,4 @@
 interface Window {
     staunch: any
 }
+
