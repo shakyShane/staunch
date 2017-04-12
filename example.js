@@ -41,6 +41,7 @@ const arbiter = new Rx.Subject();
 const actor = createActor();
 function createActor (name, methods) {
     const state = {name: 'kittie'};
+    let messages = [];
     return {
         name: 'Customer',
         methods: {
@@ -48,6 +49,10 @@ function createActor (name, methods) {
             // that will return immediately
             read: function (payload, id) {
                 return 'shane is learning actor model';
+            },
+            ping: function (payload, message) {
+                messages.push(message);
+                return JSON.stringify(messages);
             }
         },
         effects: {
@@ -72,7 +77,7 @@ function createMailbox(actor) {
         const effectMatch = actor.effects[method];
 
         if (methodMatch) {
-            const response = methodMatch.call(null, x.action.payload);
+            const response = methodMatch.call(null, x.action.payload, x);
             return of({
                 response,
                 respId: x.id
@@ -99,7 +104,7 @@ function createMailbox(actor) {
 // register the demo actor
 setTimeout(function () {
     incomingActors.onNext(actor);
-}, 0)
+}, 0);
 
 // the arbiter takes all incoming messages throughout
 // the entire system and distributes them as needed into
@@ -134,7 +139,8 @@ arbiter
 
 // the send method is how actors post messages to each other
 // it's guaranteed to happen in an async manner
-function send(action, id = uuid()) {
+// ask() sends a message asynchronously and returns a Future representing a possible reply. Also known as ask.
+function ask(action, id = uuid()) {
 
     const trackResponse = responses
         .filter(x => x.respId === id)
@@ -147,17 +153,33 @@ function send(action, id = uuid()) {
 
     return Rx.Observable.zip(trackResponse, messageSender, (resp) => resp);
 }
+// tell() means “fire-and-forget”, e.g. send a message asynchronously and return immediately. Also known as tell.
+/**
+ * @param action
+ * @param id
+ * @return void
+ */
+function tell (action, id = uuid()) {
+    Rx.Observable.just({action, id}, Rx.Scheduler.async)
+        .do(x => console.log('SEND->\n', x))
+        .do(arbiter)
+        .subscribe();
+}
 
-const resp = send({type: 'Customer.read', payload: '01'});
-const resp2 = send({type: 'Customer.reload'});
+tell({type: 'Customer.ping'});
+
+const resp = ask({type: 'Customer.read', payload: '01'});
+const resp2 = ask({type: 'Customer.reload'});
 
 resp2.subscribe(x => {
-    console.log('effect', x);
+    console.log('effect reponse', x);
 });
 
 resp.subscribe(x => {
     console.log('sd', x);
 });
+
+console.log('guaranteed async');
 // console.log(resp);
 
 // arbiter.onNext({type: 'Customer.read', payload: '01'});
