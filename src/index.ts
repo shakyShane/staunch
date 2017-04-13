@@ -1,7 +1,8 @@
 import Rx = require('rx');
 import Immutable = require('immutable');
 import {createActor} from './createActor';
-import {createMailbox} from "./createMailbox";
+import {createStateActor} from './createStateActor';
+import getMailbox from "./getMailbox";
 const uuid = require('uuid/v4');
 
 export function createStore() {
@@ -25,7 +26,7 @@ export function createStore() {
     // for incoming actors, create a mailbox for each
     const actorsWithMailboxes = incomingActors
         .map(actor => {
-            const mailbox = createMailbox(actor);
+            const mailbox = getMailbox(actor, actor.mailboxType);
             return {
                 mailbox,
                 actor
@@ -110,6 +111,7 @@ export function createStore() {
 }
 
 export {
-    createActor
+    createActor,
+    createStateActor
 };
 
