@@ -1,7 +1,19 @@
 const Rx = require('rx');
 const { empty, of } = Rx.Observable;
+const Immutable = require('immutable');
+
+const Option = Immutable.Record({
+    dir: '',
+});
+
+function createFromString(input) {
+    return new Option({dir: input});
+}
 
 module.exports.create = function (config) {
+
+    const options = Immutable.List([]);
+
     return {
         name: 'FileWatcher',
         missing: function (payload, message) {
@@ -9,9 +21,10 @@ module.exports.create = function (config) {
             return Rx.Observable.throw(new Error('I cannot accept missing methods'));
         },
         methods: {
-            ping: function() {
-                console.log('got a ping');
-                return 'shane';
+            transformOptions: function(payload) {
+                if (typeof payload === 'string') {
+                    return options.concat(createFromString(payload));
+                }
             }
         },
         effects: {
@@ -22,7 +35,6 @@ module.exports.create = function (config) {
                 return of('10').delay(10);
             },
             init: function(payload) {
-                console.log('GOT');
                 return of(payload).delay(1000);
             }
         }

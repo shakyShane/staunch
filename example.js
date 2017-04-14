@@ -1,7 +1,10 @@
 const Rx = require('rx');
 const { concat, of, empty } = Rx.Observable;
+const { Map } = require('immutable');
 const { createSystem } = require('./dist/index');
 const { create: FileWatcher} = require('./watcher');
+
+const bsOptions = Map({});
 
 const userInput = {
     watch: 'test/fixtures'
@@ -12,13 +15,22 @@ const mapping = {
 };
 
 const system  = createSystem();
-const actor   = system.createStateActor(FileWatcher());
-const init = actor.ask('init', 'first');
 
-actor.tell('ping', 'hi')
-    .subscribe(x => {
-        console.log(x);
+const queue = Object.keys(userInput)
+    // invoke the factory
+    .map(key => {
+        return [key, system.createStateActor(mapping[key].call(null))];
+    })
+    .map(([key, actor]) => {
+        const userOptions = userInput[key];
+        return actor.ask('transformOptions', userOptions);
     });
+
+// console.log(queue);
+
+Rx.Observable.fromArray(queue).subscribe(x => {
+    console.log('done', x);
+})
 
 // const init    = actor.ask('init', userInput['watch']);
 
