@@ -3,9 +3,13 @@ import Immutable = require('immutable');
 import {createActor} from './createActor';
 import {createStateActor} from './createStateActor';
 import getMailbox from "./getMailbox";
-const uuid = require('uuid/v4');
+import uuid = require('uuid/v4');
+import debug = require('debug');
+const logger = debug('staunch');
 
-export function createStore() {
+const log = (ns) => (message) => logger(`${ns}`, message);
+
+export function createSystem() {
     // global register of available actors
     const register       = new Rx.BehaviorSubject({});
     // stream for actors to register upon
@@ -41,7 +45,9 @@ export function createStore() {
     // for each registered mailbox, subscribe to
     // it's outgoing messages and pump the output
     // into the 'responses' stream
-    actorsWithMailboxes.flatMap(x => x.mailbox.outgoing)
+    actorsWithMailboxes.flatMap(x => {
+        return x.mailbox.outgoing;
+    })
         .subscribe(x => responses.onNext(x));
 
     // create an arbiter for handling incoming messages
@@ -73,16 +79,18 @@ export function createStore() {
     // the send method is how actors post messages to each other
     // it's guaranteed to happen in an async manner
     // ask() sends a message asynchronously and returns a Future representing a possible reply. Also known as ask.
-    function ask(action, id) {
+    function ask(action: IAskMessage, id?: string): Rx.Observable<any> {
         if (!id) id = uuid();
 
         const trackResponse = responses
             .filter(x => x.respId === id)
+            .do(log('ask resp ->'))
             .map(x => x.response)
             .take(1);
 
         const messageSender = Rx.Observable
             .just({action, id}, Rx.Scheduler.async)
+            .do(log('ask ->'))
             .do(message => arbiter.onNext(message));
 
         return Rx.Observable.zip(trackResponse, messageSender, (resp) => resp);
@@ -106,7 +114,21 @@ export function createStore() {
             incomingActors.onNext(actor)
         },
         ask,
-        tell
+        tell,
+        createStateActor: function(actorFactory) {
+            const stateActor = createStateActor(actorFactory);
+            incomingActors.onNext(stateActor);
+            return {
+                ask: function(name: string, payload?: any, id?: string) {
+                    const action = {
+                        type: `${stateActor.name}.${name}`,
+                        payload
+                    };
+                    return ask(action, id);
+                }
+            }
+        },
+        createActor
     }
 }
 
@@ -115,3 +137,7 @@ export {
     createStateActor
 };
 
+export interface IAskMessage {
+    type: string,
+    payload?: any
+}

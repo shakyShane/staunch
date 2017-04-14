@@ -32,13 +32,18 @@ export function createStateMailbox(actor) {
                 const output = effect.call(null, incomingMessage.action.payload, incomingMessage);
                 if (output.subscribe) {
                     return output
-                    .map(output => {
-                        return {
-                            response: output,
-                            respId: incomingMessage.id
-                        }
-                    });
+                        .map(output => {
+                            return {
+                                response: output,
+                                respId: incomingMessage.id
+                            }
+                        })
+                        .catch(e => {
+                            console.error(actor.name, e.message);
+                            return empty();
+                        })
                 } else {
+
                 return of(output)
                     .map(output => {
                         return {
