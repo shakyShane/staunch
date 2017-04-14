@@ -2,39 +2,55 @@ const Rx = require('rx');
 const { concat, of, empty } = Rx.Observable;
 const { Map } = require('immutable');
 const { createSystem } = require('./dist/index');
-const { create: FileWatcher} = require('./watcher');
+const { create: FileWatcher} = require('./fixtures/watcher');
+const { create: ServeStatic} = require('./fixtures/serveStatic');
+const { create: Server} = require('./fixtures/server');
 
 const bsOptions = Map({});
 
 const userInput = {
-    watch: 'test/fixtures'
+    watch: 'test/fixtures',
+    serveStatic: ['.'],
+    server: true
 };
 
 const mapping = {
-    watch: FileWatcher
+    watch: FileWatcher,
+    serveStatic: ServeStatic,
+    server: Server,
 };
 
 const system  = createSystem();
 
-const queue = Object.keys(userInput)
+const actors = Object.keys(userInput)
     // invoke the factory
     .map(key => {
         return [key, system.createStateActor(mapping[key].call(null))];
-    })
-    .map(([key, actor]) => {
-        const userOptions = userInput[key];
-        return actor.ask('transformOptions', userOptions)
-            .map(resp => [resp, key, actor])
     });
 
+const transformQueue = actors
+    .filter(([key, actorRef]) => {
+        return (actorRef.hasAddress('transformOptions'));
+    })
+
+    .map(([key, actor]) => {
+    const userOptions = userInput[key];
+    return actor.ask('transformOptions', userOptions)
+        .map(resp => [resp, key, actor])
+});
+
+// const initQueue = actors.map(([key, actor]) => {
+//     const userOptions = userInput[key];
+//     return actor.ask('init', userOptions)
+//         .map(resp => [resp, key, actor])
+// });
 // console.log(queue);
 
 // console.log(queue);
-Rx.Observable.from(queue).concatAll().subscribe(([resp, key, actor]) => {
-    actor.ask('noop').subscribe(x => {
-        console.log('ere');
-    })
-})
+Rx.Observable.from(transformQueue)
+    .concatAll().subscribe(([resp, key, actor]) => {
+        console.log(resp);
+    });
 
 // const init    = actor.ask('init', userInput['watch']);
 

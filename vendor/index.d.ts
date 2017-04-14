@@ -11,6 +11,11 @@ interface ActorRef {
     name: string,
     ask: AskFn,
     tell: TellFn
+    hasAddress(name: string): boolean
+    addresses: {
+        methods: string[]
+        effects: string[]
+    }
 }
 type MessageId = string;
 

@@ -36,7 +36,7 @@ module.exports.create = function (config) {
                 return of('10').delay(10);
             },
             init: function(payload) {
-                return of(payload).delay(1000);
+                return of('payload').delay(1000);
             }
         }
     }

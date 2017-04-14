@@ -129,7 +129,16 @@ export function createSystem() {
         createStateActor: function(actorFactory): ActorRef {
             const stateActor = createStateActor(actorFactory);
             incomingActors.onNext(stateActor);
+            const addresses = {
+                methods: Object.keys(stateActor.methods),
+                effects: Object.keys(stateActor.effects),
+            };
             return {
+                hasAddress(name: string): boolean {
+                    return addresses.methods.indexOf(name) > -1
+                        || addresses.effects.indexOf(name) > -1;
+                },
+                addresses,
                 name: stateActor.name,
                 ask: incoming(ask, stateActor.name),
                 tell: incoming(tell, stateActor.name),
