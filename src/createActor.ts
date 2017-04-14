@@ -1,7 +1,6 @@
-import {MailboxTypes} from "./getMailbox";
-export function createActor (input) {
+export function createActor (input): Actor {
     return {
         ...input,
-        mailboxType: MailboxTypes.default
+        mailboxType: 'default'
     };
 }

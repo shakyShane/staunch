@@ -1,15 +1,22 @@
 import Rx = require('rx');
 
-export function createDefaultMailbox (actor) {
-    const incomingMessages = new Rx.Subject();
+export interface MessageSenderRef {
+    id: string,
+    reply(message: any): void
+}
+
+export function createDefaultMailbox (actor: Actor): Mailbox {
+
+    const incomingMessages = new Rx.Subject<IncomingMessage>();
 
     const outgoing = incomingMessages
-        .flatMap(incomingMessage => {
+        .flatMap((incomingMessage: IncomingMessage) => {
+
             const [_, method] = incomingMessage.action.type.split('.');
             const receive = actor.receive;
 
             if (typeof receive !== 'function') {
-                return Rx.Observable.throw(`'Actors[default] must implement a receive() method`);
+                return Rx.Observable.throw(new Error(`'Actors[default] must implement a receive() method`));
             }
 
             return Rx.Observable.create(obs => {
@@ -19,9 +26,9 @@ export function createDefaultMailbox (actor) {
                     reply: (message) => {
                         obs.onNext(message);
                     }
-                };
+                } as MessageSenderRef;
 
-                receive.call(null, incomingMessage, sender);
+                receive.call(null, incomingMessage.action.payload, incomingMessage, sender);
 
             }).map(output => {
                 return {
@@ -32,5 +39,8 @@ export function createDefaultMailbox (actor) {
 
         }).share();
 
-    return {outgoing, incoming: incomingMessages};
+    return {
+        outgoing,
+        incoming: incomingMessages
+    };
 }

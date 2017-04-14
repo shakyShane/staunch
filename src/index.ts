@@ -13,9 +13,9 @@ export function createSystem() {
     // global register of available actors
     const register       = new Rx.BehaviorSubject({});
     // stream for actors to register upon
-    const incomingActors = new Rx.Subject();
+    const incomingActors = new Rx.Subject<Actor|StateActor>();
     // responses stream where actors can 'reply' via an id
-    const responses      = new Rx.Subject();
+    const responses      = new Rx.Subject<MessageResponse>();
     // an object containing all mailboxes
     const mailboxes      = new Rx.BehaviorSubject({});
 
@@ -79,7 +79,7 @@ export function createSystem() {
     // the send method is how actors post messages to each other
     // it's guaranteed to happen in an async manner
     // ask() sends a message asynchronously and returns a Future representing a possible reply. Also known as ask.
-    function ask(action: IAskMessage, id?: string): Rx.Observable<any> {
+    function ask(action: IOutgoingMessage, id?: string): Rx.Observable<any> {
         if (!id) id = uuid();
 
         const trackResponse = responses
@@ -89,7 +89,7 @@ export function createSystem() {
             .take(1);
 
         const messageSender = Rx.Observable
-            .just({action, id}, Rx.Scheduler.async)
+            .just({action, id}, Rx.Scheduler.default)
             .do(log('ask ->'))
             .do(message => arbiter.onNext(message));
 
@@ -102,20 +102,22 @@ export function createSystem() {
      * @return void
      */
     // tell() means “fire-and-forget”, e.g. send a message asynchronously and return immediately. Also known as tell.
-    function tell (action, id) {
+    function tell (action: IOutgoingMessage, id?: string): Rx.Observable<any> {
         if (!id) id = uuid();
-        return Rx.Observable.just({action, id}, Rx.Scheduler.async).do(arbiter);
+        return Rx.Observable.just({action, id}, Rx.Scheduler.default).do(arbiter);
     }
 
     /**
      *
      */
-    function incoming (fn: (action, id) => void, actorName, name: string, payload?: any, id?: string) {
-        const action = {
-            type: `${actorName}.${name}`,
-            payload
-        };
-        return fn(action, id);
+    function incoming (fn: (action, id) => void, actorName): AskFn {
+        return function (name: string, payload?: any, id?: string) {
+            const action = {
+                type: `${actorName}.${name}`,
+                payload
+            };
+            return fn(action, id);
+        }
     }
 
     return {
@@ -124,12 +126,13 @@ export function createSystem() {
         },
         ask,
         tell,
-        createStateActor: function(actorFactory) {
+        createStateActor: function(actorFactory): ActorRef {
             const stateActor = createStateActor(actorFactory);
             incomingActors.onNext(stateActor);
             return {
-                ask: incoming.bind(null, ask, stateActor.name),
-                tell: incoming.bind(null, tell, stateActor.name),
+                name: stateActor.name,
+                ask: incoming(ask, stateActor.name),
+                tell: incoming(tell, stateActor.name),
             }
         },
         createActor
@@ -141,7 +144,3 @@ export {
     createStateActor
 };
 
-export interface IAskMessage {
-    type: string,
-    payload?: any
-}

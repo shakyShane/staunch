@@ -1,16 +1,12 @@
+import Rx = require('rx');
 import {createDefaultMailbox} from "./createDefaultMailbox";
 import {createStateMailbox} from "./createStateMailbox";
 
-export enum MailboxTypes {
-    default = <any>'default',
-    state = <any>'state'
-}
-
-export default function getMailbox(actor, type: MailboxTypes) {
-    if (type === MailboxTypes.default) {
+export default function getMailbox(actor, type: MailboxType): Mailbox {
+    if (type === 'default') {
         return createDefaultMailbox(actor);
     }
-    if (type === MailboxTypes.state) {
+    if (type === 'state') {
         return createStateMailbox(actor);
     }
 }

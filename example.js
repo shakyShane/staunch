@@ -23,13 +23,17 @@ const queue = Object.keys(userInput)
     })
     .map(([key, actor]) => {
         const userOptions = userInput[key];
-        return actor.ask('transformOptions', userOptions);
+        return actor.ask('transformOptions', userOptions)
+            .map(resp => [resp, key, actor])
     });
 
 // console.log(queue);
 
-Rx.Observable.fromArray(queue).subscribe(x => {
-    console.log('done', x);
+// console.log(queue);
+Rx.Observable.from(queue).concatAll().subscribe(([resp, key, actor]) => {
+    actor.ask('noop').subscribe(x => {
+        console.log('ere');
+    })
 })
 
 // const init    = actor.ask('init', userInput['watch']);

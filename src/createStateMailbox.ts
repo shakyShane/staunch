@@ -6,17 +6,17 @@ const { empty, of } = Rx.Observable;
 // onto sync/async methods
 // 'methods' return values immediately
 // 'effects' return more messages
-export function createStateMailbox(actor) {
+export function createStateMailbox(actor: StateActor): Mailbox {
 
-    const incomingMessages = new Rx.Subject();
+    const incomingMessages = new Rx.Subject<IncomingMessage>();
 
     const outgoing = incomingMessages
-        .flatMap(incomingMessage => {
+        .flatMap((incomingMessage: IncomingMessage) => {
 
             const [_, method]  = incomingMessage.action.type.split('.');
-            const methodMatch  = actor.methods ? actor.methods[method] : null;
-            const effectMatch  = actor.effects ? actor.effects[method] : null;
-            const missingMatch = actor.missing ? actor.missing : null;
+            const methodMatch  : Method = actor.methods ? actor.methods[method] : null;
+            const effectMatch  : Effect = actor.effects ? actor.effects[method] : null;
+            const missingMatch : Effect = actor.missing ? actor.missing : null;
             const effect       = (effectMatch || missingMatch);
 
             if (methodMatch) {
@@ -30,6 +30,7 @@ export function createStateMailbox(actor) {
             if (effect) {
 
                 const output = effect.call(null, incomingMessage.action.payload, incomingMessage);
+
                 if (output.subscribe) {
                     return output
                         .map(output => {
@@ -44,17 +45,24 @@ export function createStateMailbox(actor) {
                         })
                 } else {
 
-                return of(output)
-                    .map(output => {
-                        return {
-                            response: output,
-                            respId: incomingMessage.id
-                        }
-                    });
+                    return of(output)
+                        .map(output => {
+                            return {
+                                response: output,
+                                respId: incomingMessage.id
+                            }
+                        })
+                        .catch((e): any => {
+                            console.error(actor.name, e.message);
+                            return empty();
+                        })
                 }
             }
         return empty();
     }).share();
 
-    return {outgoing, incoming: incomingMessages};
+    return {
+        outgoing, 
+        incoming: incomingMessages
+    };
 }
