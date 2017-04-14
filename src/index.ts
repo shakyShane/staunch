@@ -104,9 +104,18 @@ export function createSystem() {
     // tell() means “fire-and-forget”, e.g. send a message asynchronously and return immediately. Also known as tell.
     function tell (action, id) {
         if (!id) id = uuid();
-        Rx.Observable.just({action, id}, Rx.Scheduler.async)
-            .do(arbiter)
-            .subscribe();
+        return Rx.Observable.just({action, id}, Rx.Scheduler.async).do(arbiter);
+    }
+
+    /**
+     *
+     */
+    function incoming (fn: (action, id) => void, actorName, name: string, payload?: any, id?: string) {
+        const action = {
+            type: `${actorName}.${name}`,
+            payload
+        };
+        return fn(action, id);
     }
 
     return {
@@ -119,13 +128,8 @@ export function createSystem() {
             const stateActor = createStateActor(actorFactory);
             incomingActors.onNext(stateActor);
             return {
-                ask: function(name: string, payload?: any, id?: string) {
-                    const action = {
-                        type: `${stateActor.name}.${name}`,
-                        payload
-                    };
-                    return ask(action, id);
-                }
+                ask: incoming.bind(null, ask, stateActor.name),
+                tell: incoming.bind(null, tell, stateActor.name),
             }
         },
         createActor

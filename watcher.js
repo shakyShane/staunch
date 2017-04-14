@@ -8,6 +8,12 @@ module.exports.create = function (config) {
             // console.log('MISSING METHOD/EFFECT', payload);
             return Rx.Observable.throw(new Error('I cannot accept missing methods'));
         },
+        methods: {
+            ping: function() {
+                console.log('got a ping');
+                return 'shane';
+            }
+        },
         effects: {
             promise: function (payload, message) {
                 return Promise.resolve('Hi!');

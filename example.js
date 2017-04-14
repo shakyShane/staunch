@@ -15,8 +15,10 @@ const system  = createSystem();
 const actor   = system.createStateActor(FileWatcher());
 const init = actor.ask('init', 'first');
 
-system.ask({type: 'FileWatcher.init', payload: 'hi'})
-        .subscribe(x => console.log('hello!'));
+actor.tell('ping', 'hi')
+    .subscribe(x => {
+        console.log(x);
+    });
 
 // const init    = actor.ask('init', userInput['watch']);
 
