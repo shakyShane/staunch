@@ -1,11 +1,12 @@
 import Rx = require('rx');
+import {ask, tell} from "./index";
 
 export interface MessageSenderRef {
     id: string,
     reply(message: any): void
 }
 
-export function createDefaultMailbox (actor: Actor): Mailbox {
+export function createDefaultMailbox (actor: Actor, system): Mailbox {
 
     const incomingMessages = new Rx.Subject<IncomingMessage>();
 
