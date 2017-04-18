@@ -21,3 +21,4 @@ export declare function getMap(incoming: any): Immutable.Map<{}, {}>;
 export declare function alwaysMap(input: any): any;
 export declare function isPlainObject(value: any): boolean;
 export default createStore;
+export { StaunchStore };

@@ -23,6 +23,7 @@ require("rxjs/add/operator/startWith");
 require("rxjs/add/operator/take");
 require("rxjs/add/observable/of");
 var StaunchStore_1 = require("./StaunchStore");
+exports.StaunchStore = StaunchStore_1.StaunchStore;
 var ReducerTypes;
 (function (ReducerTypes) {
     ReducerTypes[ReducerTypes["MappedReducer"] = 'MappedReducer'] = "MappedReducer";

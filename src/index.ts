@@ -72,3 +72,7 @@ if ((typeof window !== 'undefined') && ((typeof window.staunch) === 'undefined')
         createStore
     };
 }
+
+export {
+    StaunchStore
+};
