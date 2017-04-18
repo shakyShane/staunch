@@ -92,16 +92,16 @@ export class StaunchStore {
             this._addReducers(reducers);
         }
 
+        if (extras) {
+            this._addExtras(extras);
+        }
+
         if (effects) {
             this._addEffects(effects);
         }
 
         if (responses) {
             this._addResponses(responses);
-        }
-
-        if (extras) {
-            this._addExtras(extras);
         }
 
         return this;
