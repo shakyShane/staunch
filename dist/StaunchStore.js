@@ -37,7 +37,7 @@ var StaunchStore = (function () {
         this.actionsWithResultingStateUpdate$ = this.actionsWithState$;
     }
     StaunchStore.prototype.register = function (input) {
-        var state = input.state, reducers = input.reducers, effects = input.effects, responses = input.responses;
+        var state = input.state, reducers = input.reducers, effects = input.effects, responses = input.responses, extras = input.extras;
         if (state) {
             this._registerOnStateTree(state);
         }
@@ -49,6 +49,9 @@ var StaunchStore = (function () {
         }
         if (responses) {
             this._addResponses(responses);
+        }
+        if (extras) {
+            this._addExtras(extras);
         }
         return this;
     };

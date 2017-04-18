@@ -82,7 +82,7 @@ export class StaunchStore {
     }
 
     register(input) {
-        const {state, reducers, effects, responses} = input;
+        const {state, reducers, effects, responses, extras} = input;
 
         if (state) {
             this._registerOnStateTree(state);
@@ -98,6 +98,10 @@ export class StaunchStore {
 
         if (responses) {
             this._addResponses(responses);
+        }
+
+        if (extras) {
+            this._addExtras(extras);
         }
 
         return this;
