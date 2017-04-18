@@ -1,31 +1,32 @@
-import {Observable} from 'rxjs/Observable';
-import 'rxjs/add/operator/scan';
-import 'rxjs/add/operator/map';
-import 'rxjs/add/operator/filter';
-import 'rxjs/add/operator/withLatestFrom';
-import 'rxjs/add/operator/distinctUntilChanged';
-import 'rxjs/add/operator/take';
-import 'rxjs/add/operator/do';
-import 'rxjs/add/operator/mergeMap';
-import 'rxjs/add/observable/of';
-
 import Immutable = require('immutable');
-
+import {Observable} from 'rxjs/Observable';
 import {actionStream} from "./actions";
 import {handleResponses} from "./responses";
 import {gatherReducers, InputTypes} from "./addReducers";
 import {gatherEffects} from "./addEffects";
 import {concatFn, assignFn} from "./subjects";
 
-const BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
-const Subject = require('rxjs/subject').Subject;
+import {BehaviorSubject} from 'rxjs/BehaviorSubject';
+import {Subject} from 'rxjs/Subject';
+
+import 'rxjs/add/operator/scan';
+import 'rxjs/add/operator/do';
+import 'rxjs/add/operator/withLatestFrom';
+import 'rxjs/add/operator/filter';
+import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/mergeMap';
+import 'rxjs/add/operator/switchMap';
+import 'rxjs/add/operator/distinctUntilChanged';
+import 'rxjs/add/operator/startWith';
+import 'rxjs/add/operator/take';
+import 'rxjs/add/observable/of';
 
 export enum ReducerTypes {
     MappedReducer = <any>'MappedReducer',
     GlobalReducer = <any>'GlobalReducer'
 }
 
-export function createStore(initialState: object,
+export function createStore(initialState,
                             initialReducers,
                             initialEffects,
                             initialMiddleware,
@@ -220,7 +221,7 @@ export function createStore(initialState: object,
         },
         once: function (actions) {
             const lookup = alwaysArray(actions);
-            return actionsWithState$.filter(x => {
+            return actionsWithState$.filter((x: {action: any}) => {
                 return lookup.indexOf(x.action.type) > -1;
             }).take(1);
         },

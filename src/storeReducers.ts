@@ -1,12 +1,13 @@
 import Immutable = require('immutable');
-const BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
-const Subject = require('rxjs/subject').Subject;
+import {BehaviorSubject} from 'rxjs/BehaviorSubject';
+import {Subject} from 'rxjs/Subject';
+import {Subscription} from 'rxjs/Subscription';
 
 export function getStoreReducers() {
 
     const storeReducers = new BehaviorSubject([]);
     const newReducer$ = new Subject();
-    const subscription = newReducer$.scan(function (acc, incoming) {
+    const subscription = newReducer$.scan(function (acc:any, incoming) {
         return acc.concat(incoming);
     }, []).subscribe(storeReducers);
 

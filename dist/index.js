@@ -1,22 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-require("rxjs/add/operator/scan");
-require("rxjs/add/operator/map");
-require("rxjs/add/operator/filter");
-require("rxjs/add/operator/withLatestFrom");
-require("rxjs/add/operator/distinctUntilChanged");
-require("rxjs/add/operator/take");
-require("rxjs/add/operator/do");
-require("rxjs/add/operator/mergeMap");
-require("rxjs/add/observable/of");
 var Immutable = require("immutable");
 var actions_1 = require("./actions");
 var responses_1 = require("./responses");
 var addReducers_1 = require("./addReducers");
 var addEffects_1 = require("./addEffects");
 var subjects_1 = require("./subjects");
-var BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
-var Subject = require('rxjs/subject').Subject;
+var BehaviorSubject_1 = require("rxjs/BehaviorSubject");
+var Subject_1 = require("rxjs/Subject");
+require("rxjs/add/operator/scan");
+require("rxjs/add/operator/do");
+require("rxjs/add/operator/withLatestFrom");
+require("rxjs/add/operator/filter");
+require("rxjs/add/operator/map");
+require("rxjs/add/operator/mergeMap");
+require("rxjs/add/operator/switchMap");
+require("rxjs/add/operator/distinctUntilChanged");
+require("rxjs/add/operator/startWith");
+require("rxjs/add/operator/take");
+require("rxjs/add/observable/of");
 var ReducerTypes;
 (function (ReducerTypes) {
     ReducerTypes[ReducerTypes["MappedReducer"] = 'MappedReducer'] = "MappedReducer";
@@ -24,25 +26,25 @@ var ReducerTypes;
 })(ReducerTypes = exports.ReducerTypes || (exports.ReducerTypes = {}));
 function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
     var mergedInitialState = alwaysMap(initialState);
-    var state$ = new BehaviorSubject(mergedInitialState);
+    var state$ = new BehaviorSubject_1.BehaviorSubject(mergedInitialState);
     var subs = [];
-    var userExtra$ = new BehaviorSubject({});
-    var newExtras$ = new Subject();
+    var userExtra$ = new BehaviorSubject_1.BehaviorSubject({});
+    var newExtras$ = new Subject_1.Subject();
     subs.push(newExtras$.scan(subjects_1.assignFn, {}).subscribe(userExtra$));
     // reducers to act upon state
-    var storeReducers = new BehaviorSubject([]);
-    var newReducer$ = new Subject();
+    var storeReducers = new BehaviorSubject_1.BehaviorSubject([]);
+    var newReducer$ = new Subject_1.Subject();
     subs.push(newReducer$.scan(subjects_1.concatFn, []).subscribe(storeReducers));
     // Mapped reducers
-    var mappedReducers = new BehaviorSubject([]);
-    var newMappedReducer$ = new Subject();
+    var mappedReducers = new BehaviorSubject_1.BehaviorSubject([]);
+    var newMappedReducer$ = new Subject_1.Subject();
     subs.push(newMappedReducer$.scan(subjects_1.concatFn, []).subscribe(mappedReducers));
     // responses
-    var storeResponses = new BehaviorSubject([]);
-    var newResponses = new Subject();
+    var storeResponses = new BehaviorSubject_1.BehaviorSubject([]);
+    var newResponses = new Subject_1.Subject();
     subs.push(newResponses.scan(subjects_1.concatFn, []).subscribe(storeResponses));
     // stream of actions
-    var action$ = new Subject();
+    var action$ = new Subject_1.Subject();
     // stream
     subs.push(actions_1.actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
         .subscribe(state$));

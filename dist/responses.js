@@ -1,13 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Observable_1 = require("rxjs/Observable");
-require("rxjs/add/observable/of");
-require("rxjs/add/operator/scan");
-require("rxjs/add/operator/map");
-require("rxjs/add/operator/filter");
-require("rxjs/add/operator/withLatestFrom");
-require("rxjs/add/operator/take");
-require("rxjs/add/operator/mergeMap");
 var index_1 = require("./index");
 function handleResponses(actionsWithState$, storeResponses) {
     /**

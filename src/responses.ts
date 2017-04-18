@@ -1,11 +1,4 @@
 import {Observable} from 'rxjs/Observable';
-import 'rxjs/add/observable/of';
-import 'rxjs/add/operator/scan';
-import 'rxjs/add/operator/map';
-import 'rxjs/add/operator/filter';
-import 'rxjs/add/operator/withLatestFrom';
-import 'rxjs/add/operator/take';
-import 'rxjs/add/operator/mergeMap';
 
 import {getMap} from "./index";
 
@@ -33,5 +26,5 @@ export function handleResponses (actionsWithState$, storeResponses) {
             });
 
             return Observable.of(newActions);
-        })
+        });
 }

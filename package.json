@@ -4,6 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "devDependencies": {
+    "aliasify": "^2.1.0",
     "browserify": "^14.1.0",
     "browserify-shim": "3.8.13",
     "chai": "^3.5.0",
@@ -23,8 +24,8 @@
     "src"
   ],
   "peerDependencies": {
-    "immutable": "^4.0.0-rc.1",
-    "rxjs": "^5.3.0"
+    "immutable": "^3.0.0",
+    "rxjs": "^5.0.0"
   },
   "scripts": {
     "test": "cb test",
@@ -35,17 +36,31 @@
   "license": "ISC",
   "browserify": {
     "transform": [
-      "browserify-shim"
+      "browserify-shim",
+      "aliasify"
     ]
   },
   "browserify-shim": {
     "immutable": "global:Immutable",
-    "rxjs": "global:Rx"
+    "rxjs": "global:Rx",
+    "rxjs/Observable": "global:Rx",
+    "rxjs/BehaviorSubject": "global:Rx",
+    "rxjs/Subject": "global:Rx"
   },
-  "jest": {
-    "testPathIgnorePatterns": [
-      "dist"
-    ]
+  "aliasify": {
+    "aliases": {
+      "rxjs/add/operator/scan": "./noop.js",
+      "rxjs/add/operator/do": "./noop.js",
+      "rxjs/add/operator/withLatestFrom": "./noop.js",
+      "rxjs/add/operator/filter": "./noop.js",
+      "rxjs/add/operator/map": "./noop.js",
+      "rxjs/add/operator/mergeMap": "./noop.js",
+      "rxjs/add/operator/switchMap": "./noop.js",
+      "rxjs/add/operator/distinctUntilChanged": "./noop.js",
+      "rxjs/add/operator/startWith": "./noop.js",
+      "rxjs/add/operator/take": "./noop.js",
+      "rxjs/add/observable/of": "./noop.js"
+    }
   },
   "dependencies": {}
 }
