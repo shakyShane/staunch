@@ -9,11 +9,10 @@
     "chai": "^3.5.0",
     "exorcist": "^0.4.0",
     "hyperx": "^2.3.0",
-    "immutable": "^4.0.0-rc.1",
+    "immutable": "^3.8.1",
     "mocha": "^3.2.0",
     "preact": "^7.2.0",
-    "rx": "^4.1.0",
-    "rxjs": "^5.2.0",
+    "rxjs": "^5.3.0",
     "tslint": "^4.5.1",
     "typescript": "^2.2.1",
     "typings": "^2.1.0",
@@ -25,7 +24,7 @@
   ],
   "peerDependencies": {
     "immutable": "^4.0.0-rc.1",
-    "rxjs": "^5.2.0"
+    "rxjs": "^5.3.0"
   },
   "scripts": {
     "test": "cb test",
@@ -41,7 +40,7 @@
   },
   "browserify-shim": {
     "immutable": "global:Immutable",
-    "rx": "global:Rx"
+    "rxjs": "global:Rx"
   },
   "jest": {
     "testPathIgnorePatterns": [

@@ -1,14 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Rx = require("rx");
+require("rxjs/add/operator/scan");
+require("rxjs/add/operator/map");
+require("rxjs/add/operator/filter");
+require("rxjs/add/operator/withLatestFrom");
+require("rxjs/add/operator/distinctUntilChanged");
+require("rxjs/add/operator/take");
+require("rxjs/add/operator/do");
+require("rxjs/add/operator/mergeMap");
+require("rxjs/add/observable/of");
 var Immutable = require("immutable");
 var actions_1 = require("./actions");
 var responses_1 = require("./responses");
 var addReducers_1 = require("./addReducers");
 var addEffects_1 = require("./addEffects");
 var subjects_1 = require("./subjects");
-var BehaviorSubject = Rx.BehaviorSubject;
-var Subject = Rx.Subject;
+var BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
+var Subject = require('rxjs/subject').Subject;
 var ReducerTypes;
 (function (ReducerTypes) {
     ReducerTypes[ReducerTypes["MappedReducer"] = 'MappedReducer'] = "MappedReducer";
@@ -70,10 +78,10 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     function _dispatcher(action) {
         if (Array.isArray(action)) {
             return action.forEach(function (a) {
-                action$.onNext(a);
+                action$.next(a);
             });
         }
-        return action$.onNext(action);
+        return action$.next(action);
     }
     function _addMiddleware(middleware) {
         alwaysArray(middleware).forEach(function (middleware) {
@@ -82,7 +90,7 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
     }
     function _addExtras(extras) {
         alwaysArray(extras).forEach(function (extra) {
-            newExtras$.onNext(extra);
+            newExtras$.next(extra);
         });
     }
     function _registerOnStateTree(state) {
@@ -101,7 +109,7 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         alwaysArray(responses).forEach(function (resp) {
             Object.keys(resp).forEach(function (actionName) {
                 var item = resp[actionName];
-                newResponses.onNext({
+                newResponses.next({
                     name: actionName,
                     path: [].concat(item.path).filter(Boolean),
                     targetName: item.action
@@ -121,10 +129,10 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         addReducers_1.gatherReducers(incoming)
             .forEach(function (outgoing) {
             if (outgoing.type === addReducers_1.InputTypes.Reducer) {
-                newReducer$.onNext(outgoing.payload);
+                newReducer$.next(outgoing.payload);
             }
             if (outgoing.type === addReducers_1.InputTypes.MappedReducer) {
-                newMappedReducer$.onNext(outgoing.payload);
+                newMappedReducer$.next(outgoing.payload);
             }
             if (outgoing.type === addReducers_1.InputTypes.State) {
                 _registerOnStateTree(outgoing.payload);
@@ -194,7 +202,7 @@ function createStore(initialState, initialReducers, initialEffects, initialMiddl
         },
         close: function () {
             if (api.isOpen) {
-                subs.forEach(function (sub) { return sub.dispose(); });
+                subs.forEach(function (sub) { return sub.unsubscribe(); });
                 api.isOpen = false;
             }
             return api;

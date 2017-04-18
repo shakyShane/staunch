@@ -1,13 +1,24 @@
-import Rx = require('rx');
+import {Observable} from 'rxjs/Observable';
+import 'rxjs/add/operator/scan';
+import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/filter';
+import 'rxjs/add/operator/withLatestFrom';
+import 'rxjs/add/operator/distinctUntilChanged';
+import 'rxjs/add/operator/take';
+import 'rxjs/add/operator/do';
+import 'rxjs/add/operator/mergeMap';
+import 'rxjs/add/observable/of';
+
 import Immutable = require('immutable');
+
 import {actionStream} from "./actions";
 import {handleResponses} from "./responses";
 import {gatherReducers, InputTypes} from "./addReducers";
 import {gatherEffects} from "./addEffects";
 import {concatFn, assignFn} from "./subjects";
 
-const BehaviorSubject = Rx.BehaviorSubject;
-const Subject = Rx.Subject;
+const BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
+const Subject = require('rxjs/subject').Subject;
 
 export enum ReducerTypes {
     MappedReducer = <any>'MappedReducer',
@@ -86,10 +97,10 @@ export function createStore(initialState: object,
     function _dispatcher(action) {
         if (Array.isArray(action)) {
             return action.forEach(function(a) {
-                action$.onNext(a)
+                action$.next(a)
             });
         }
-        return action$.onNext(action);
+        return action$.next(action);
     }
 
 
@@ -102,7 +113,7 @@ export function createStore(initialState: object,
 
     function _addExtras(extras) {
         alwaysArray(extras).forEach(function (extra) {
-            newExtras$.onNext(extra);
+            newExtras$.next(extra);
         });
     }
 
@@ -123,7 +134,7 @@ export function createStore(initialState: object,
         alwaysArray(responses).forEach(function (resp) {
             Object.keys(resp).forEach(function (actionName) {
                 const item = resp[actionName];
-                newResponses.onNext({
+                newResponses.next({
                     name: actionName,
                     path: [].concat(item.path).filter(Boolean),
                     targetName: item.action
@@ -145,10 +156,10 @@ export function createStore(initialState: object,
         gatherReducers(incoming)
             .forEach(outgoing => {
                 if (outgoing.type === InputTypes.Reducer) {
-                    newReducer$.onNext(outgoing.payload);
+                    newReducer$.next(outgoing.payload);
                 }
                 if (outgoing.type === InputTypes.MappedReducer) {
-                    newMappedReducer$.onNext(outgoing.payload);
+                    newMappedReducer$.next(outgoing.payload);
                 }
                 if (outgoing.type === InputTypes.State) {
                     _registerOnStateTree(outgoing.payload);
@@ -224,7 +235,7 @@ export function createStore(initialState: object,
         },
         close: function() {
             if (api.isOpen) {
-                subs.forEach(sub => sub.dispose());
+                subs.forEach(sub => sub.unsubscribe());
                 api.isOpen = false;
             }
             return api;

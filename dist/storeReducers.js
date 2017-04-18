@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Rx = require("rx");
-var BehaviorSubject = Rx.BehaviorSubject;
-var Subject = Rx.Subject;
+var BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
+var Subject = require('rxjs/subject').Subject;
 function getStoreReducers() {
     var storeReducers = new BehaviorSubject([]);
     var newReducer$ = new Subject();

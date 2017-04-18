@@ -1,8 +1,6 @@
-import Rx = require('rx');
 import Immutable = require('immutable');
-
-const BehaviorSubject = Rx.BehaviorSubject;
-const Subject = Rx.Subject;
+const BehaviorSubject = require('rxjs/BehaviorSubject').BehaviorSubject;
+const Subject = require('rxjs/subject').Subject;
 
 export function getStoreReducers() {
 

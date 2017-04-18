@@ -1,7 +1,7 @@
 const { createStore } = require('../dist');
 const { assert } = require('chai');
 const Immutable   = require('immutable');
-const Rx          = require('rx');
+const Rx          = require('rxjs');
 const {fromJS}    = Immutable;
 
 const initialUserState = {
