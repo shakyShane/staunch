@@ -199,15 +199,15 @@ export class StaunchStore {
         this.dispatcher(action);
         return this;
     }
-    public getState(path: string|string[]) {
+    public getState(path?: string|string[]) {
         const lookup = alwaysArray(path);
         return this.state$.getValue().getIn(lookup, getMap({}));
     }
-    public toJS(path: string|string[]) {
+    public toJS(path?: string|string[]) {
         const lookup = alwaysArray(path);
         return this.state$.getValue().getIn(lookup, getMap({})).toJS();
     }
-    public toJSON(path: string|string[]) {
+    public toJSON(path?: string|string[]) {
         const lookup = alwaysArray(path);
         return this.state$.getValue().getIn(lookup, getMap({})).toJSON();
     }
@@ -215,7 +215,7 @@ export class StaunchStore {
         this._addMiddleware(middleware);
         return this;
     }
-    public changes(path) {
+    public changes(path?: string|string[]) {
         const lookup = alwaysArray(path);
         return this.state$.map(x => x.getIn(lookup))
             .distinctUntilChanged();

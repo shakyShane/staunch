@@ -52,11 +52,11 @@ export declare class StaunchStore {
     private _addReducers(incoming);
     addReducers(reducers: any): this;
     dispatch(action: IAction): this;
-    getState(path: string | string[]): any;
-    toJS(path: string | string[]): any;
-    toJSON(path: string | string[]): any;
+    getState(path?: string | string[]): any;
+    toJS(path?: string | string[]): any;
+    toJSON(path?: string | string[]): any;
     addMiddleware(middleware: any): this;
-    changes(path: any): Observable<any>;
+    changes(path?: string | string[]): Observable<any>;
     once(actions: string | string[]): Observable<{
         action: any;
     }>;
