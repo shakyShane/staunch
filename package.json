@@ -62,5 +62,6 @@
       "rxjs/add/observable/of": "./noop.js"
     }
   },
-  "dependencies": {}
+  "dependencies": {},
+  "typings": "./dist/index.d.ts"
 }
