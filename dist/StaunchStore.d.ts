@@ -57,10 +57,9 @@ export declare class StaunchStore {
     toJSON(path?: string | string[]): any;
     addMiddleware(middleware: any): this;
     changes(path?: string | string[]): Observable<any>;
-    once(actions: string | string[]): Observable<{
-        action: any;
-    }>;
+    once(actions: string | string[]): Observable<IActionWithState>;
     addExtras(extras: any): this;
     addEffects(effects: any): this;
     close(): this;
+    ofType(path?: string | string[]): Observable<IActionWithState>;
 }

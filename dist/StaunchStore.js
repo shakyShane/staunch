@@ -190,6 +190,14 @@ var StaunchStore = (function () {
         }
         return this;
     };
+    StaunchStore.prototype.ofType = function (path) {
+        var lookup = index_1.alwaysArray(path);
+        return this.actionsWithState$
+            .filter(function (_a) {
+            var action = _a.action;
+            return lookup.indexOf(action.type) > -1;
+        });
+    };
     return StaunchStore;
 }());
 exports.StaunchStore = StaunchStore;

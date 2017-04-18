@@ -220,7 +220,7 @@ export class StaunchStore {
         return this.state$.map(x => x.getIn(lookup))
             .distinctUntilChanged();
     }
-    public once(actions: string|string[]) {
+    public once(actions: string|string[]): Observable<IActionWithState> {
         const lookup = alwaysArray(actions);
         return this.actionsWithState$.filter((x: {action: any}) => {
             return lookup.indexOf(x.action.type) > -1;
@@ -240,5 +240,12 @@ export class StaunchStore {
             this.isOpen = false;
         }
         return this;
+    }
+    public ofType(path?: string|string[]) {
+        const lookup = alwaysArray(path);
+        return this.actionsWithState$
+            .filter(({action}) => {
+                return lookup.indexOf(action.type) > -1;
+            });
     }
 }
