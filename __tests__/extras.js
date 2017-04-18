@@ -1,17 +1,16 @@
 const { createStore } = require('../dist');
 const assert = require('assert');
 
-
 it('allows user-provided extras', function () {
-    const store = createStore({}, [], [], [], [
-        {
+    const store = createStore({
+        extras: {
             config: {
                 urls: {
                     finder: '/branches/finder/'
                 }
             }
         }
-    ]);
+    });
     const result = store.register({
         state: {
             user: {

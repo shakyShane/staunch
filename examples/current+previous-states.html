@@ -40,9 +40,12 @@ const initial = {
     global: {auth: false}
 };
 
-const store = staunch.createStore(initial, {
-    user: userReducer,
-    global: globalReducer
+const store = staunch.createStore({
+    state: initial,
+    reducers: {
+        user: userReducer,
+        global: globalReducer
+    }
 });
 
 // dom elements for rendering

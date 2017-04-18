@@ -2,14 +2,13 @@ const { createStore } = require('../dist');
 const Rx = require('rxjs');
 const assert = require('assert');
 
-
 it('allows user to provide a scheduler', function () {
     const s = new Rx.VirtualTimeScheduler();
-    const store = createStore({}, [], [], [], [
-        {
+    const store = createStore({
+        extras:  {
             scheduler: s
         }
-    ]);
+    });
     const result = store.register({
         state: {
             user: {

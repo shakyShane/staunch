@@ -16,8 +16,13 @@
 <script>
 
     const elem = document.querySelector('#count');
-    const store = staunch.createStore({count: 0}, function(state, action) {
-        return state.update('count', count => count + 1);
+    const store = staunch.createStore({
+        state: {
+            count: 0
+        },
+        reducers: function(state, action) {
+            return state.update('count', count => count + 1);
+        }
     });
 
     window.setInterval(function() {

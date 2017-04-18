@@ -41,7 +41,7 @@ describe('setup with root reducers (mixed types)', function () {
             }
         };
 
-        const store = createStore(initialState, [
+        const store = createStore({state: initialState, reducers: [
             {
                 user: userReducer
             },
@@ -51,7 +51,7 @@ describe('setup with root reducers (mixed types)', function () {
                 },
                 reducers: globalReducer
             }
-        ]);
+        ]});
 
         const result = store.dispatch([
             {type: 'GLOBAL_AUTH', payload: true},

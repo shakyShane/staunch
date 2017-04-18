@@ -54,13 +54,17 @@ describe('setup with single effect', function () {
     it('starts with initial state, reducers & effects', function () {
 
         const store = createStore({
-            settings: {
-                vat: false
-            }
-        }, {
-            user: userReducer,
-            global: globalReducer
-        }, singleEffect);
+            state: {
+                settings: {
+                    vat: false
+                }
+            },
+            reducers: {
+                user: userReducer,
+                global: globalReducer
+            },
+            effects: singleEffect
+        });
 
         store.dispatch({type: 'GLOBAL_AUTH', payload: true});
         assert.equal(store.toJS().user.name, 'shane');

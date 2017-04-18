@@ -86,7 +86,7 @@ it('Add reducer function tied to a path (id)', function () {
         return state;
     };
 
-    const store = createStore({user: {name: 'shane'}}, fn2);
+    const store = createStore({state:{user: {name: 'shane'}}, reducers: fn2});
 
     store.action$.subscribe(function (action) {
         assert.equal(action.type, 'USER_ID', 'action has type');
@@ -107,7 +107,7 @@ it('Add reducer function tied to a path (id)', function () {
         return state;
     };
 
-    const store = createStore({user: {name: 'shane'}}, fn2);
+    const store = createStore({state: {user: {name: 'shane'}}, reducers: fn2});
 
     store.actionsWithState$.subscribe(function (incoming) {
         assert.equal(incoming.action.type, 'USER_ID', 'action has type');
