@@ -23,7 +23,7 @@ export interface IActionWithState {
 export declare class StaunchStore {
     action$: Subject<IAction>;
     newExtras$: Subject<any>;
-    userExtra$: Subject<any>;
+    userExtra$: BehaviorSubject<any>;
     newResponses: Subject<any>;
     newReducer$: Subject<any>;
     newMappedReducer$: Subject<any>;
