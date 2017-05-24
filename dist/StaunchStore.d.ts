@@ -2,11 +2,13 @@ import { Map } from 'immutable';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { Subject } from 'rxjs/Subject';
 import { Observable, Subscription } from "rxjs";
+export declare type PostDispatchFn = (actions: IAction[]) => void;
 export interface IStoreProps {
     state?: any;
     reducers?: any[];
     effects?: any[];
     middleware?: Function[];
+    postDispatch?: PostDispatchFn[];
     extras?: any;
 }
 export interface IAction {
@@ -34,6 +36,7 @@ export declare class StaunchStore {
     subs: Subscription[];
     actionsWithState$: Observable<IActionWithState>;
     actionsWithResultingStateUpdate$: Observable<IActionWithState>;
+    postDispatchFns: PostDispatchFn[];
     isOpen: boolean;
     constructor(props: IStoreProps);
     register(input: any): this;

@@ -37,6 +37,7 @@ var StaunchStore = (function () {
             };
         });
         this.actionsWithResultingStateUpdate$ = this.actionsWithState$;
+        this.postDispatchFns = [].concat(props.postDispatch).filter(Boolean);
     }
     StaunchStore.prototype.register = function (input) {
         var state = input.state, reducers = input.reducers, effects = input.effects, responses = input.responses, extras = input.extras;
@@ -100,11 +101,16 @@ var StaunchStore = (function () {
             return;
         }
         if (Array.isArray(action)) {
-            return action.forEach(function (a) {
+            action.forEach(function (a) {
                 _this.action$.next(a);
             });
         }
-        return this.action$.next(action);
+        else {
+            this.action$.next(action);
+        }
+        if (this.postDispatchFns.length) {
+            this.postDispatchFns.forEach(function (fn) { return fn(action); });
+        }
     };
     StaunchStore.prototype._addMiddleware = function (middleware) {
         var _this = this;

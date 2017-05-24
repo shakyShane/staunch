@@ -7,11 +7,14 @@ import {Observable, Subscription} from "rxjs";
 import {gatherEffects} from "./addEffects";
 import {gatherReducers, InputTypes} from "./addReducers";
 
+export type PostDispatchFn = (actions: IAction[]) => void;
+
 export interface IStoreProps {
     state?: any
     reducers?: any[]
     effects?: any[]
     middleware?: Function[]
+    postDispatch?: PostDispatchFn[]
     extras?: any
 }
 
@@ -42,6 +45,7 @@ export class StaunchStore {
     public subs: Subscription[];
     public actionsWithState$: Observable<IActionWithState>;
     public actionsWithResultingStateUpdate$: Observable<IActionWithState>;
+    public postDispatchFns: PostDispatchFn[];
 
     isOpen = true;
 
@@ -79,6 +83,8 @@ export class StaunchStore {
             }
         });
         this.actionsWithResultingStateUpdate$ = this.actionsWithState$;
+
+        this.postDispatchFns = [].concat(props.postDispatch).filter(Boolean);
     }
 
     register(input) {
@@ -149,11 +155,16 @@ export class StaunchStore {
             return;
         }
         if (Array.isArray(action)) {
-            return action.forEach((a) => {
+            action.forEach((a) => {
                 this.action$.next(a)
             });
+        } else {
+            this.action$.next(action);
         }
-        return this.action$.next(action);
+
+        if (this.postDispatchFns.length) {
+            this.postDispatchFns.forEach(fn => fn(action));
+        }
     }
 
     private _addMiddleware(middleware) {
