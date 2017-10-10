@@ -43,23 +43,28 @@ No joke, just specify which 'path' on the tree you're interested in and you'll o
 when the data has actually changed.
 
 ```js
-const { createStore } = require('staunch-store');
-const store = createStore({user: {name: 'Shane'}});
+import { createStore } from "staunch-store"
+
+const store = createStore({
+  state: { user: { name: "Shane" } }
+})
 
 // listen to the entire state tree for changes
-store.changes()
-    .subscribe(state => 
-        console.log('updated state', state)
-    );
-    
+store
+  .changes()
+  .subscribe(state =>
+    console.log("updated state", state.toJS())
+  )
+
 // or listen to just the 'user' section of the state
-store.changes('user')
-    .subscribe(user => 
-        console.log('updated state', user)
-    );
+store
+  .changes("user")
+  .subscribe(user =>
+    console.log("updated state", user.toJS())
+  )
 
 // dispatch an action
-store.dispatch({type: 'USER_AUTH'});
+store.dispatch({ type: "USER_AUTH" })
 ```
 
 ### Complete safety and removal of defensive coding patterns
@@ -70,24 +75,30 @@ Say good riddance to `Object.assign` once and for all!
 
 ```js
 import { createStore } from 'staunch-store';
-import { fromJS } from 'immutable';
 
-// initial user state
-const intitial = {user: {name: 'shane'}};
-
-// create store + add a reducer that will be
-// bound to the 'user' path
-const store = createStore(intitial, {
-    user: function userReducer (user, action) {
-          switch(action.type) {
-              case 'USER_AUTH':
-                  // look ma, no Object.assign in sight!
-                  return user.set('auth', action.payload); 
-              default:
-                  return user;
-          }
+const config = {
+  state: { user: { name: "shane", auth: false } },
+  reducers: {
+    //user is bound to the user "path" in the store
+    user(user, action) {
+      switch (action.type) {
+        case "USER_AUTH":
+          //note we're working directly with the user
+          return user.set("auth", action.payload)
+        default:
+          return user
+      }
     }
-});
+  }
+}
+
+const store = createStore(config)
+
+store
+  .changes("user")
+  .subscribe(user => console.log(user.toJS()))
+
+store.dispatch({ type: "USER_AUTH", payload: true })
 ```
 
 ### Async built in
