@@ -1,12 +1,18 @@
 const { createStore } = require('../dist');
-const Rx = require('rxjs');
 const assert = require('assert');
 
-it('allows user to provide a scheduler', function () {
-    const s = new Rx.VirtualTimeScheduler();
+it('allows fns to be registered to be called outside of stream lifecycle', function () {
+    let calls = 0;
     const store = createStore({
-        extras:  {
-            scheduler: s
+        postDispatch: [function () {
+            calls++;
+        }],
+        extras: {
+            config: {
+                urls: {
+                    finder: '/branches/finder/'
+                }
+            }
         }
     });
     const result = store.register({
@@ -15,25 +21,24 @@ it('allows user to provide a scheduler', function () {
                 name: 'shane'
             }
         },
-        reducers: [
-            function (user, action) {
+        reducers: {
+            user: function (user, action) {
                 switch (action.type) {
                     case 'USER_ID':
                         return user.set('id', action.payload);
                 }
                 return user;
             }
-        ],
+        },
         effects: [
             function (action$, extras) {
                 return action$.ofType('USER_REGISTER')
-                    .map(function(incoming) {
+                    .map(function() {
                         return {
                             type: 'USER_ID',
-                            payload: incoming.action.payload
+                            payload: extras.config.urls.finder
                         }
-                    })
-                    .delay(20000, extras.scheduler)
+                    });
             }
         ]
     })
@@ -41,6 +46,5 @@ it('allows user to provide a scheduler', function () {
         .getState()
         .toJS();
 
-    s.flush();
-
+    assert.equal(calls, 3, 'first is INIT');
 });

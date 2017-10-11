@@ -10,14 +10,19 @@
 <body>
 <h1>Staunch counter example: <span id="count">0</span></h1>
 <h2>This is using file <code>../dist/staunch.js</code></h2>
-<script src="../node_modules/rx/dist/rx.all.js"></script>
+<script src="../node_modules/rxjs/bundles/Rx.js"></script>
 <script src="../node_modules/immutable/dist/immutable.js"></script>
 <script src="../dist/staunch.js"></script>
 <script>
 
     const elem = document.querySelector('#count');
-    const store = staunch.createStore({count: 0}, function(state, action) {
-        return state.update('count', count => count + 1);
+    const store = staunch.createStore({
+        state: {
+            count: 0
+        },
+        reducers: function(state, action) {
+            return state.update('count', count => count + 1);
+        }
     });
 
     window.setInterval(function() {

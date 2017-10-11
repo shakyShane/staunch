@@ -25,10 +25,10 @@ it('Add reducer with direct action fn mapping', function () {
         }
     ];
 
-    const store = createStore({
+    const store = createStore({state: {
         user: {name: 'shane'},
         global: {}
-    }, mappedReducers);
+    }, reducers: mappedReducers});
 
     store.actionsWithState$.subscribe(function (incoming) {
         assert.equal(incoming.action.type, 'USER_ID', 'action has type');

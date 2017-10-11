@@ -7,18 +7,20 @@ describe('supporting middleware', function () {
 
         let calls = 0;
 
-        const store = createStore({}, [], [], [
-            function (store) {
-                store.actionsWithResultingStateUpdate$
-                    .filter(function (x) {
-                        return x.action.type.indexOf('@@') !== 0;
-                    })
-                    .distinctUntilChanged(function (incoming) {
-                        return incoming.state;
-                    })
-                    .subscribe(x => calls++);
-            }
-        ]);
+        const store = createStore({
+            middleware: [
+                function (store) {
+                    store.actionsWithResultingStateUpdate$
+                        .filter(function (x) {
+                            return x.action.type.indexOf('@@') !== 0;
+                        })
+                        .distinctUntilChanged(function (incoming) {
+                            return incoming.state;
+                        })
+                        .subscribe(x => calls++);
+                }
+            ]
+        });
 
         store.register({
             state: {

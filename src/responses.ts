@@ -1,4 +1,5 @@
-import Rx = require('rx');
+import {Observable} from 'rxjs/Observable';
+
 import {getMap} from "./index";
 
 export function handleResponses (actionsWithState$, storeResponses) {
@@ -24,6 +25,6 @@ export function handleResponses (actionsWithState$, storeResponses) {
                 }
             });
 
-            return Rx.Observable.from(newActions);
-        })
+            return Observable.of(newActions);
+        });
 }

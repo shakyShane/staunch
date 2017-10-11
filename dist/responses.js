@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Rx = require("rx");
+var Observable_1 = require("rxjs/Observable");
 var index_1 = require("./index");
 function handleResponses(actionsWithState$, storeResponses) {
     /**
@@ -25,7 +25,7 @@ function handleResponses(actionsWithState$, storeResponses) {
                 via: "[response to (" + actionName + ")]"
             };
         });
-        return Rx.Observable.from(newActions);
+        return Observable_1.Observable.of(newActions);
     });
 }
 exports.handleResponses = handleResponses;

@@ -10,7 +10,7 @@
 <body>
 <h1>Staunch: Current + previous state</h1>
 <h2>This is using file <code>../dist/staunch.js</code></h2>
-<script src="../node_modules/rx/dist/rx.all.js"></script>
+<script src="../node_modules/rxjs/bundles/Rx.js"></script>
 <script src="../node_modules/immutable/dist/immutable.js"></script>
 <script src="../dist/staunch.js"></script>
 <p>Previous state</p>
@@ -40,9 +40,12 @@ const initial = {
     global: {auth: false}
 };
 
-const store = staunch.createStore(initial, {
-    user: userReducer,
-    global: globalReducer
+const store = staunch.createStore({
+    state: initial,
+    reducers: {
+        user: userReducer,
+        global: globalReducer
+    }
 });
 
 // dom elements for rendering

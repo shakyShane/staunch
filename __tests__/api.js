@@ -16,13 +16,13 @@ describe('api', function() {
     });
 
     it('toJS() (path)', function () {
-        const store = createStore({user: {name: 'shane'}});
+        const store = createStore({state: {user: {name: 'shane'}}});
         assert.deepEqual(store.toJS('user').name, 'shane')
     });
 
     it('toJSON() (full)', function () {
         const input    = {name: 'shane'};
-        const store    = createStore(input);
+        const store    = createStore({state: input});
         const expected = Immutable.fromJS(input).toJSON();
         const actual   = store.toJSON();
         assert.deepEqual(actual, expected);
@@ -30,7 +30,7 @@ describe('api', function() {
 
     it('toJSON() (path)', function () {
         const input    = {user: {name: 'shane'}};
-        const store    = createStore(input);
+        const store    = createStore({state: input});
         const expected = Immutable.fromJS(input.user).toJSON();
         const actual   = store.toJSON(['user']);
         assert.deepEqual(actual, expected);
@@ -58,7 +58,7 @@ describe('api', function() {
 
     it('addReducers() Add reducer function tied to a path (id) (name)', function () {
 
-        const store = createStore({user: {name: 'shane'}});
+        const store = createStore({state:{user: {name: 'shane'}}});
 
         const fn2 = function (user, action) {
             switch (action.type) {
@@ -115,9 +115,9 @@ describe('api', function() {
             }
         };
 
-        const store = createStore(initialState, function (state, action) {
+        const store = createStore({state: initialState, reducers: function (state, action) {
             return state.setIn(['user', 'id'], action.payload);
-        });
+        }});
 
         store.changes(['user'])
             .subscribe(x => { calls.push(x) });
@@ -140,8 +140,12 @@ describe('api', function() {
             }
         };
 
-        const store = createStore(initialState, function (state, action) {
-            return state.setIn(['user', 'id'], action.payload);
+        const store = createStore({
+            state: initialState,
+            reducers: function (state, action) {
+                console.log(action);
+                return state.setIn(['user', 'id'], action.payload);
+            }
         });
 
         store.changes(['user'])
@@ -168,9 +172,9 @@ describe('api', function() {
             }
         };
 
-        const store = createStore(initialState, function (state, action) {
+        const store = createStore({state: initialState, reducers: function (state, action) {
             return state.setIn(['user', 'id'], action.payload);
-        });
+        }});
 
         store.changes(['user'])
             .subscribe(x => { calls.push(x) });

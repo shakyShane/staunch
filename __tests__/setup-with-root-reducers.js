@@ -46,10 +46,10 @@ describe('setup with root reducers (redux style)', function () {
             }
         };
 
-        const store = createStore(initialState, {
+        const store = createStore({state: initialState, reducers: {
             user: userReducer,
             global: globalReducer
-        });
+        }});
 
         const result = store.dispatch([
             {type: 'GLOBAL_AUTH', payload: true},

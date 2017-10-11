@@ -1,4 +1,221 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var index_1 = require("./index");
+var BehaviorSubject_1 = (typeof window !== "undefined" ? window['Rx'] : typeof global !== "undefined" ? global['Rx'] : null);
+var Subject_1 = (typeof window !== "undefined" ? window['Rx'] : typeof global !== "undefined" ? global['Rx'] : null);
+var subjects_1 = require("./subjects");
+var addEffects_1 = require("./addEffects");
+var addReducers_1 = require("./addReducers");
+var StaunchStore = (function () {
+    function StaunchStore(props) {
+        this.isOpen = true;
+        this.state$ = new BehaviorSubject_1.BehaviorSubject(props.state);
+        this.subs = [];
+        this.userExtra$ = new BehaviorSubject_1.BehaviorSubject({});
+        this.newExtras$ = new Subject_1.Subject();
+        this.subs.push(this.newExtras$.scan(subjects_1.assignFn, {}).subscribe(this.userExtra$));
+        // reducers to act upon state
+        this.storeReducers = new BehaviorSubject_1.BehaviorSubject([]);
+        this.newReducer$ = new Subject_1.Subject();
+        this.subs.push(this.newReducer$.scan(subjects_1.concatFn, []).subscribe(this.storeReducers));
+        // Mapped reducers
+        this.mappedReducers = new BehaviorSubject_1.BehaviorSubject([]);
+        this.newMappedReducer$ = new Subject_1.Subject();
+        this.subs.push(this.newMappedReducer$.scan(subjects_1.concatFn, []).subscribe(this.mappedReducers));
+        // responses
+        this.storeResponses = new BehaviorSubject_1.BehaviorSubject([]);
+        this.newResponses = new Subject_1.Subject();
+        this.subs.push(this.newResponses.scan(subjects_1.concatFn, []).subscribe(this.storeResponses));
+        // stream of actions
+        this.action$ = new Subject_1.Subject();
+        this.actionsWithState$ = this.action$.withLatestFrom(this.state$, function (action, state) {
+            return {
+                action: action,
+                state: state
+            };
+        });
+        this.actionsWithResultingStateUpdate$ = this.actionsWithState$;
+        this.postDispatchFns = [].concat(props.postDispatch).filter(Boolean);
+    }
+    StaunchStore.prototype.register = function (input) {
+        var state = input.state, reducers = input.reducers, effects = input.effects, responses = input.responses, extras = input.extras;
+        if (state) {
+            this._registerOnStateTree(state);
+        }
+        if (reducers) {
+            this._addReducers(reducers);
+        }
+        if (extras) {
+            this._addExtras(extras);
+        }
+        if (effects) {
+            this._addEffects(effects);
+        }
+        if (responses) {
+            this._addResponses(responses);
+        }
+        return this;
+    };
+    StaunchStore.prototype._registerOnStateTree = function (state) {
+        for (var key in state) {
+            // now init with action
+            this.dispatcher({
+                type: '@@NS-INIT(' + key + ')',
+                payload: {
+                    path: [key],
+                    value: state[key]
+                }
+            });
+        }
+    };
+    StaunchStore.prototype._addExtras = function (extras) {
+        var _this = this;
+        index_1.alwaysArray(extras).forEach(function (extra) {
+            _this.newExtras$.next(extra);
+        });
+    };
+    StaunchStore.prototype._addResponses = function (responses) {
+        var _this = this;
+        index_1.alwaysArray(responses).forEach(function (resp) {
+            Object.keys(resp).forEach(function (actionName) {
+                var item = resp[actionName];
+                _this.newResponses.next({
+                    name: actionName,
+                    path: [].concat(item.path).filter(Boolean),
+                    targetName: item.action
+                });
+            });
+        });
+    };
+    /**
+     * Dispatch 1 or many actions
+     * @param action
+     * @returns {*}
+     * @private
+     */
+    StaunchStore.prototype.dispatcher = function (action) {
+        var _this = this;
+        if (!this.isOpen) {
+            return;
+        }
+        if (Array.isArray(action)) {
+            action.forEach(function (a) {
+                _this.action$.next(a);
+            });
+        }
+        else {
+            this.action$.next(action);
+        }
+        if (this.postDispatchFns.length) {
+            this.postDispatchFns.forEach(function (fn) { return fn(action); });
+        }
+    };
+    StaunchStore.prototype._addMiddleware = function (middleware) {
+        var _this = this;
+        index_1.alwaysArray(middleware).forEach(function (middleware) {
+            middleware.call(null, _this);
+        });
+    };
+    StaunchStore.prototype._addEffects = function (incoming) {
+        var _this = this;
+        /**
+         * Default extras that get passed to all 'effects'
+         */
+        var storeExtras = {
+            state$: this.state$,
+            action$: this.action$,
+            actionsWithState$: this.actionsWithState$,
+            actionsWithResultingStateUpdate$: this.actionsWithState$
+        };
+        addEffects_1.gatherEffects(incoming, this.actionsWithState$, storeExtras, this.userExtra$)
+            .forEach(function (outgoing) {
+            if (outgoing.type === addReducers_1.InputTypes.Effect) {
+                _this.subs.push(outgoing.payload.subscribe(_this.dispatcher.bind(_this)));
+            }
+        });
+    };
+    StaunchStore.prototype._addReducers = function (incoming) {
+        var _this = this;
+        addReducers_1.gatherReducers(incoming)
+            .forEach(function (outgoing) {
+            if (outgoing.type === addReducers_1.InputTypes.Reducer) {
+                _this.newReducer$.next(outgoing.payload);
+            }
+            if (outgoing.type === addReducers_1.InputTypes.MappedReducer) {
+                _this.newMappedReducer$.next(outgoing.payload);
+            }
+            if (outgoing.type === addReducers_1.InputTypes.State) {
+                _this._registerOnStateTree(outgoing.payload);
+            }
+        });
+    };
+    StaunchStore.prototype.addReducers = function (reducers) {
+        this._addReducers(reducers);
+        return this;
+    };
+    StaunchStore.prototype.dispatch = function (action) {
+        this.dispatcher(action);
+        return this;
+    };
+    StaunchStore.prototype.getState = function (path) {
+        var lookup = index_1.alwaysArray(path);
+        return this.state$.getValue().getIn(lookup, index_1.getMap({}));
+    };
+    StaunchStore.prototype.toJS = function (path) {
+        var lookup = index_1.alwaysArray(path);
+        return this.state$.getValue().getIn(lookup, index_1.getMap({})).toJS();
+    };
+    StaunchStore.prototype.toJSON = function (path) {
+        var lookup = index_1.alwaysArray(path);
+        return this.state$.getValue().getIn(lookup, index_1.getMap({})).toJSON();
+    };
+    StaunchStore.prototype.addMiddleware = function (middleware) {
+        this._addMiddleware(middleware);
+        return this;
+    };
+    StaunchStore.prototype.changes = function (path) {
+        var lookup = index_1.alwaysArray(path);
+        return this.state$.map(function (x) { return x.getIn(lookup); })
+            .distinctUntilChanged();
+    };
+    StaunchStore.prototype.once = function (actions) {
+        var lookup = index_1.alwaysArray(actions);
+        return this.actionsWithState$.filter(function (x) {
+            return lookup.indexOf(x.action.type) > -1;
+        }).take(1);
+    };
+    StaunchStore.prototype.addExtras = function (extras) {
+        this._addExtras(extras);
+        return this;
+    };
+    StaunchStore.prototype.addEffects = function (effects) {
+        this._addEffects(effects);
+        return this;
+    };
+    StaunchStore.prototype.close = function () {
+        if (this.isOpen) {
+            this.subs.forEach(function (sub) { return sub.unsubscribe(); });
+            this.isOpen = false;
+        }
+        return this;
+    };
+    StaunchStore.prototype.ofType = function (path) {
+        var lookup = index_1.alwaysArray(path);
+        return this.actionsWithState$
+            .filter(function (_a) {
+            var action = _a.action;
+            return lookup.indexOf(action.type) > -1;
+        });
+    };
+    return StaunchStore;
+}());
+exports.StaunchStore = StaunchStore;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{"./addEffects":3,"./addReducers":4,"./index":5,"./subjects":7}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var index_1 = require("./index");
@@ -59,7 +276,7 @@ function actionStream(intialState, action$, storeReducers, mappedReducers) {
 }
 exports.actionStream = actionStream;
 
-},{"./index":4}],2:[function(require,module,exports){
+},{"./index":5}],3:[function(require,module,exports){
 "use strict";
 var __assign = (this && this.__assign) || Object.assign || function(t) {
     for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -111,7 +328,7 @@ function gatherEffects(incoming, actionsWithState$, storeExtras, userExtra$) {
 }
 exports.gatherEffects = gatherEffects;
 
-},{"./addReducers":3,"./index":4}],3:[function(require,module,exports){
+},{"./addReducers":4,"./index":5}],4:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var index_1 = require("./index");
@@ -219,216 +436,57 @@ function gatherReducers(incoming) {
 }
 exports.gatherReducers = gatherReducers;
 
-},{"./index":4}],4:[function(require,module,exports){
+},{"./index":5}],5:[function(require,module,exports){
 (function (global){
 "use strict";
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-var Rx = (typeof window !== "undefined" ? window['Rx'] : typeof global !== "undefined" ? global['Rx'] : null);
 var Immutable = (typeof window !== "undefined" ? window['Immutable'] : typeof global !== "undefined" ? global['Immutable'] : null);
 var actions_1 = require("./actions");
 var responses_1 = require("./responses");
-var addReducers_1 = require("./addReducers");
-var addEffects_1 = require("./addEffects");
-var subjects_1 = require("./subjects");
-var BehaviorSubject = Rx.BehaviorSubject;
-var Subject = Rx.Subject;
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+require('./../noop.js');
+var StaunchStore_1 = require("./StaunchStore");
+exports.StaunchStore = StaunchStore_1.StaunchStore;
 var ReducerTypes;
 (function (ReducerTypes) {
     ReducerTypes[ReducerTypes["MappedReducer"] = 'MappedReducer'] = "MappedReducer";
     ReducerTypes[ReducerTypes["GlobalReducer"] = 'GlobalReducer'] = "GlobalReducer";
 })(ReducerTypes = exports.ReducerTypes || (exports.ReducerTypes = {}));
-function createStore(initialState, initialReducers, initialEffects, initialMiddleware, initialExtras) {
-    var mergedInitialState = alwaysMap(initialState);
-    var state$ = new BehaviorSubject(mergedInitialState);
+function createStore(props) {
+    if (props === void 0) { props = {}; }
+    var mergedInitialState = alwaysMap(props.state);
+    var store = new StaunchStore_1.StaunchStore(__assign({}, props, { state: mergedInitialState }));
     var subs = [];
-    var userExtra$ = new BehaviorSubject({});
-    var newExtras$ = new Subject();
-    subs.push(newExtras$.scan(subjects_1.newExtrasFn, {}).subscribe(userExtra$));
-    // reducers to act upon state
-    var storeReducers = new BehaviorSubject([]);
-    var newReducer$ = new Subject();
-    subs.push(newReducer$.scan(subjects_1.concatFn, []).subscribe(storeReducers));
-    // Mapped reducers
-    var mappedReducers = new BehaviorSubject([]);
-    var newMappedReducer$ = new Subject();
-    subs.push(newMappedReducer$.scan(subjects_1.concatFn, []).subscribe(mappedReducers));
-    // responses
-    var storeResponses = new BehaviorSubject([]);
-    var newResponses = new Subject();
-    subs.push(newResponses.scan(subjects_1.concatFn, []).subscribe(storeResponses));
-    // stream of actions
-    var action$ = new Subject();
     // stream
-    subs.push(actions_1.actionStream(mergedInitialState, action$, storeReducers, mappedReducers)
-        .subscribe(state$));
-    /**
-     * Create a stream that has updates + resulting state updates
-     */
-    var actionsWithState$ = action$.withLatestFrom(state$, function (action, state) {
-        return {
-            action: action,
-            state: state
-        };
-    });
+    subs.push(actions_1.actionStream(mergedInitialState, store.action$, store.storeReducers, store.mappedReducers)
+        .subscribe(store.state$));
     /**
      * Setup responses for declarative cross-domain communication
      */
-    subs.push(responses_1.handleResponses(actionsWithState$, storeResponses)
-        .subscribe(function (action) { return _dispatcher(action); }));
-    /**
-     * Default extras that get passed to all 'effects'
-     */
-    var storeExtras = {
-        state$: state$,
-        action$: action$,
-        actionsWithState$: actionsWithState$,
-        actionsWithResultingStateUpdate$: actionsWithState$
-    };
-    /**
-     * Dispatch 1 or many actions
-     * @param action
-     * @returns {*}
-     * @private
-     */
-    function _dispatcher(action) {
-        if (Array.isArray(action)) {
-            return action.forEach(function (a) {
-                action$.onNext(a);
-            });
-        }
-        return action$.onNext(action);
-    }
-    function _addMiddleware(middleware) {
-        alwaysArray(middleware).forEach(function (middleware) {
-            middleware.call(null, api);
-        });
-    }
-    function _addExtras(extras) {
-        alwaysArray(extras).forEach(function (extra) {
-            newExtras$.onNext(extra);
-        });
-    }
-    function _registerOnStateTree(state) {
-        for (var key in state) {
-            // now init with action
-            _dispatcher({
-                type: '@@NS-INIT(' + key + ')',
-                payload: {
-                    path: [key],
-                    value: state[key]
-                }
-            });
-        }
-    }
-    function _addResponses(responses) {
-        alwaysArray(responses).forEach(function (resp) {
-            Object.keys(resp).forEach(function (actionName) {
-                var item = resp[actionName];
-                newResponses.onNext({
-                    name: actionName,
-                    path: [].concat(item.path).filter(Boolean),
-                    targetName: item.action
-                });
-            });
-        });
-    }
-    function _addEffects(incoming) {
-        addEffects_1.gatherEffects(incoming, actionsWithState$, storeExtras, userExtra$)
-            .forEach(function (outgoing) {
-            if (outgoing.type === addReducers_1.InputTypes.Effect) {
-                subs.push(outgoing.payload.subscribe(_dispatcher));
-            }
-        });
-    }
-    function _addReducers(incoming) {
-        addReducers_1.gatherReducers(incoming)
-            .forEach(function (outgoing) {
-            if (outgoing.type === addReducers_1.InputTypes.Reducer) {
-                newReducer$.onNext(outgoing.payload);
-            }
-            if (outgoing.type === addReducers_1.InputTypes.MappedReducer) {
-                newMappedReducer$.onNext(outgoing.payload);
-            }
-            if (outgoing.type === addReducers_1.InputTypes.State) {
-                _registerOnStateTree(outgoing.payload);
-            }
-        });
-    }
-    var api = {
-        isOpen: true,
-        state$: state$,
-        action$: action$,
-        actionsWithState$: actionsWithState$,
-        actionsWithResultingStateUpdate$: actionsWithState$,
-        register: function (input) {
-            var state = input.state, reducers = input.reducers, effects = input.effects, responses = input.responses;
-            if (state) {
-                _registerOnStateTree(state);
-            }
-            if (reducers) {
-                _addReducers(reducers);
-            }
-            if (effects) {
-                _addEffects(effects);
-            }
-            if (responses) {
-                _addResponses(responses);
-            }
-            return api;
-        },
-        addReducers: function (reducers) {
-            _addReducers(reducers);
-            return api;
-        },
-        dispatch: function (action) {
-            _dispatcher(action);
-            return api;
-        },
-        getState: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.getValue().getIn(lookup, getMap({}));
-        },
-        toJS: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.getValue().getIn(lookup, getMap({})).toJS();
-        },
-        toJSON: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.getValue().getIn(lookup, getMap({})).toJSON();
-        },
-        addMiddleware: function (middleware) {
-            _addMiddleware(middleware);
-            return api;
-        },
-        once: function (actions) {
-            var lookup = alwaysArray(actions);
-            return actionsWithState$.filter(function (x) {
-                return lookup.indexOf(x.action.type) > -1;
-            }).take(1);
-        },
-        changes: function (path) {
-            var lookup = alwaysArray(path);
-            return state$.map(function (x) { return x.getIn(lookup); })
-                .distinctUntilChanged();
-        },
-        addExtras: function (extras) {
-            _addExtras(extras);
-            return api;
-        },
-        close: function () {
-            if (api.isOpen) {
-                subs.forEach(function (sub) { return sub.dispose(); });
-                api.isOpen = false;
-            }
-            return api;
-        }
-    };
-    // add initial ones
-    _addReducers(initialReducers);
-    _addEffects(initialEffects);
-    _addMiddleware(initialMiddleware);
-    _addExtras(initialExtras);
-    return api;
+    subs.push(responses_1.handleResponses(store.actionsWithState$, store.storeResponses)
+        .subscribe(function (action) { return store.dispatcher(action); }));
+    store.addReducers(props.reducers);
+    store.addEffects(props.effects);
+    store.addMiddleware(props.middleware);
+    store.addExtras(props.extras);
+    return store;
 }
 exports.createStore = createStore;
 function alwaysArray(input) {
@@ -457,11 +515,11 @@ if ((typeof window !== 'undefined') && ((typeof window.staunch) === 'undefined')
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./actions":1,"./addEffects":2,"./addReducers":3,"./responses":5,"./subjects":6}],5:[function(require,module,exports){
+},{"./../noop.js":8,"./StaunchStore":1,"./actions":2,"./responses":6}],6:[function(require,module,exports){
 (function (global){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Rx = (typeof window !== "undefined" ? window['Rx'] : typeof global !== "undefined" ? global['Rx'] : null);
+var Observable_1 = (typeof window !== "undefined" ? window['Rx'] : typeof global !== "undefined" ? global['Rx'] : null);
 var index_1 = require("./index");
 function handleResponses(actionsWithState$, storeResponses) {
     /**
@@ -486,24 +544,27 @@ function handleResponses(actionsWithState$, storeResponses) {
                 via: "[response to (" + actionName + ")]"
             };
         });
-        return Rx.Observable.from(newActions);
+        return Observable_1.Observable.of(newActions);
     });
 }
 exports.handleResponses = handleResponses;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./index":4}],6:[function(require,module,exports){
+},{"./index":5}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-function newExtrasFn(extras, incoming) {
+function assignFn(extras, incoming) {
     return Object.assign({}, extras, incoming);
 }
-exports.newExtrasFn = newExtrasFn;
+exports.assignFn = assignFn;
 function concatFn(acc, incoming) {
     return acc.concat(incoming);
 }
 exports.concatFn = concatFn;
 
-},{}]},{},[4])
+},{}],8:[function(require,module,exports){
+//
+
+},{}]},{},[5])
 //# sourceMappingURL=staunch.js.map

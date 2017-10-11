@@ -1,7 +1,7 @@
 const { createStore } = require('../dist');
 const { assert } = require('chai');
 const Immutable   = require('immutable');
-const Rx          = require('rx');
+const Rx          = require('rxjs');
 const {fromJS}    = Immutable;
 
 const initialUserState = {
@@ -54,13 +54,17 @@ describe('setup with single effect', function () {
     it('starts with initial state, reducers & effects', function () {
 
         const store = createStore({
-            settings: {
-                vat: false
-            }
-        }, {
-            user: userReducer,
-            global: globalReducer
-        }, singleEffect);
+            state: {
+                settings: {
+                    vat: false
+                }
+            },
+            reducers: {
+                user: userReducer,
+                global: globalReducer
+            },
+            effects: singleEffect
+        });
 
         store.dispatch({type: 'GLOBAL_AUTH', payload: true});
         assert.equal(store.toJS().user.name, 'shane');
