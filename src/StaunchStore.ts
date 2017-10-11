@@ -1,4 +1,4 @@
-import {alwaysArray, alwaysMap, getMap} from "./index";
+import {alwaysArray, getMap} from "./index";
 import {Map} from 'immutable';
 import {BehaviorSubject} from 'rxjs/BehaviorSubject';
 import {Subject} from 'rxjs/Subject';

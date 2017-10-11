@@ -1,5 +1,4 @@
 import Immutable = require('immutable');
-import {Observable} from 'rxjs/Observable';
 import {actionStream} from "./actions";
 import {handleResponses} from "./responses";
 
