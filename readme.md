@@ -108,66 +108,63 @@ Staunch has side effects nailed. Effects are just functions that take a stream o
 
 
 ```js
-import { createStore } from 'staunch-store';
+import { createStore } from "staunch-store"
+import { fromJS } from "immutable"
+import { Observable} from "rxjs"
 
-const initial = {user: {auth: false}};
+const LOAD_USER = "LOAD_USER"
+const ADD_USER = "ADD_USER"
 
+const loadUsers = stream$ =>
+  stream$
+    .map(({ action, state }) => action.payload.id)
+    .concatMap(id =>
+      Observable.ajax(
+        `https://jsonplaceholder.typicode.com/users/${id}`
+      )
+        .map(({ response }) => response)
+        .map(payload => ({
+          type: ADD_USER,
+          payload
+        }))
+    )
+loadUsers.triggers = [LOAD_USER]
 
-/**
- * User reducer
- */
-function userReducer (user, action) {
-    switch(action.type) {
-        case 'USER_FETCH':
-            return user.set('loading', true);
-        case 'USER_FETCH_SUCCESS':
-            return user.set('data', action.payload);
-        case 'USER_FETCH_ERROR':
-            return user
-                .set('data', {})
-                .set('message', action.payload)
-        default:
-            return user;
+const config = {
+  state: {
+    users: []
+  },
+  reducers: [
+    {
+      path: ["users"],
+      reducers: {
+        [ADD_USER]: (users, payload) =>
+          users.push(fromJS(payload))
+      }
     }
+  ],
+  effects: [loadUsers]
 }
 
-/**
- * action$ here is a stream of all actions that occur
- * When USER_FETCH is fired, it will trigger an ajax request 
- * mapping the result (or error) to other actions that
- * affect the state.
- */
-function userEffect(action$) {
-    return action$.ofType('USER_FETCH')
-        .flatMapLatest(({action, state}) => {
-            return fetch(action.payload.url).then(x => x.json())
-        })
-        .map(result => {
-            return {
-                type: 'USER_FETCH_SUCCESS',
-                payload: result
-            }
-        })
-        .catch(err => {
-            return Rx.Observable.of({
-                type: 'USER_FETCH_ERROR',
-                payload: err.message
-            });
-        });
-}
+const store = createStore(config)
 
-// store with 
-// 1. initial state 
-// 2. reducer bound to 'user' path
-// 3. the userEffect fn
-const store = createStore(initial, {
-    user: userReducer
-}, userEffect);
+store
+  .changes("users")
+  .subscribe(users => console.log(users.toJS()))
 
+store.dispatch({
+  type: LOAD_USER,
+  payload: { id: 1 }
+})
 
-/**
- * Now fire the USER_AUTH action
- */
-store.dispatch({type: 'USER_AUTH'});
+store.dispatch({
+  type: LOAD_USER,
+  payload: { id: 2 }
+})
+
+store.dispatch({
+  type: LOAD_USER,
+  payload: { id: 3 }
+})
 
 ```
