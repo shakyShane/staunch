@@ -101,6 +101,49 @@ store
 store.dispatch({ type: "USER_AUTH", payload: true })
 ```
 
+### Mapped Reducers
+Mapped reducers help simplify the `switch/case` syntax of a traditional redux reducer by moving
+the action `type` into an object key and the `payload` as the second argument:
+
+```js
+import { createStore } from "staunch-store"
+
+const USER_AUTH = "USER_AUTH"
+const USER_CHANGE_NAME = "USER_CHANGE_NAME"
+
+const config = {
+  state: {
+    user: { name: "shane", auth: false }
+  },
+  reducers: [
+    {
+      path: ["user"],
+      reducers: {
+        [USER_AUTH]: (user, payload) =>
+          user.set("auth", payload),
+        [USER_CHANGE_NAME]: (user, payload) =>
+          user.set("name", payload)
+      }
+    }
+  ]
+}
+
+const store = createStore(config)
+
+store
+  .changes("user")
+  .subscribe(user => console.log(user.toJS()))
+
+store.dispatch({
+  type: USER_AUTH,
+  payload: true
+})
+store.dispatch({
+  type: USER_CHANGE_NAME,
+  payload: "john"
+})
+```
+
 ### Async built in
 Nothing solves async like Rx does. Taking inspiration from `redux-observable` and building upon it, 
 Staunch has side effects nailed. Effects are just functions that take a stream of actions
